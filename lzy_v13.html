@@ -1,0 +1,2415 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>荔枝瘾 - 推理游戏</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#E63946', // 荔枝红
+                        secondary: '#F1FAEE', // 浅色背景
+                        accent: '#1D3557', // 深色文字
+                        light: '#A8DADC', // 亮蓝色
+                        dark: '#457B9D', // 深蓝色
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                    boxShadow: {
+                        'card': '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+                        'card-hover': '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+                    }
+                },
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .transition-all-300 {
+                transition: all 300ms ease-in-out;
+            }
+            .scale-hover {
+                @apply hover:scale-105 transition-all duration-300;
+            }
+            .drag-ghost {
+                @apply opacity-50 scale-90;
+            }
+            .room-highlight {
+                @apply ring-2 ring-primary ring-offset-2;
+            }
+            .player-selected {
+                @apply bg-primary/10 border-primary;
+            }
+        }
+    </style>
+</head>
+<body class="bg-secondary min-h-screen text-accent">
+    <!-- 顶部导航栏 -->
+    <header class="bg-primary text-white shadow-md">
+        <div class="container mx-auto px-4 py-3 flex justify-between items-center">
+            <div class="flex items-center space-x-2">
+                <i class="fa fa-pagelines text-2xl"></i>
+                <h1 class="text-xl md:text-2xl font-bold">荔枝瘾</h1>
+            </div>
+            <div id="game-status" class="hidden md:flex items-center space-x-4">
+                <span id="current-phase" class="bg-white/20 px-3 py-1 rounded-full text-sm">游戏未开始</span>
+                <button id="help-btn" class="hover:bg-white/20 p-2 rounded-full transition-all-300">
+                    <i class="fa fa-question-circle"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- 主内容区 -->
+    <main class="container mx-auto px-4 py-6 md:py-10">
+        <!-- 游戏说明模态框 -->
+        <div id="help-modal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden">
+            <div class="bg-white rounded-xl shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto p-6 m-4">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-2xl font-bold text-primary">游戏规则说明</h2>
+                    <button id="close-help" class="text-gray-500 hover:text-gray-700">
+                        <i class="fa fa-times text-xl"></i>
+                    </button>
+                </div>
+                <div class="space-y-4 text-gray-700">
+                    <div>
+                        <h3 class="font-bold text-lg mb-2 text-accent">基础设定</h3>
+                        <p>游戏共有10名成员，分为两个阵营：</p>
+                        <ul class="list-disc pl-5 mt-1">
+                            <li>「荔枝瘾阵营」：3人，知晓同伴身份</li>
+                            <li>「普通成员阵营」：7人，仅知晓自身身份</li>
+                        </ul>
+                        <p class="mt-2">「荔枝瘾」成员每个时辰会发作，若未被监管，会偷吃所在房间的荔枝。</p>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-lg mb-2 text-accent">游戏流程</h3>
+                        <ol class="list-decimal pl-5 space-y-2">
+                            <li><strong>第一轮测试</strong>：2个房间（大房间7人，小房间3人），各放1颗荔枝，每房间推选1名被监管者</li>
+                            <li><strong>第二轮测试</strong>：与第一轮规则相同</li>
+                            <li><strong>第三轮测试</strong>：3个房间，无人数限制，各放1颗荔枝，每房间推选1名被监管者</li>
+                            <li><strong>最终投票</strong>：每人拥有3票，投给3名不同的怀疑对象</li>
+                            <li><strong>胜负判定</strong>：所有进入前三名排名的玩家（包括并列者）若包含所有荔枝瘾成员，则普通成员胜利；否则荔枝瘾成员胜利</li>
+                        </ol>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-lg mb-2 text-accent">荔枝状态判定</h3>
+                        <p>房间内有未被监管的「荔枝瘾」→荔枝被偷吃；无「荔枝瘾」或「荔枝瘾」均被监管→荔枝保留</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 模块1：基础设定模块 -->
+        <section id="module-1" class="transition-all duration-500">
+            <div class="bg-white rounded-xl shadow-card p-6 mb-8">
+                <h2 class="text-2xl font-bold mb-6 text-primary flex items-center">
+                    <i class="fa fa-cog mr-2"></i>基础设定
+                </h2>
+                
+                <div class="mb-6">
+                    <h3 class="text-lg font-semibold mb-3">游戏说明</h3>
+                    <div class="bg-secondary p-4 rounded-lg text-gray-700">
+                        <p>欢迎参与「荔枝瘾」推理游戏！请点击右上角查看游戏规则！</p>
+                        <p class="mt-2">游戏将通过三轮房间测试，帮助普通成员找出隐藏的3名荔枝瘾成员。请10名玩家各自查看身份（可设置姓名），然后开始游戏。</p>
+                    </div>
+                </div>
+                
+                <div class="mb-6">
+                    <h3 class="text-lg font-semibold mb-3">玩家设置</h3>
+                    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
+                        <!-- 玩家方框将通过JS动态生成 -->
+                    </div>
+                </div>
+                
+                <div class="text-center">
+                    <button id="start-game" class="bg-primary hover:bg-primary/90 text-white font-bold py-3 px-8 rounded-full shadow-md scale-hover">
+                        开始游戏
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- 模块2：第一轮房间测试 -->
+        <section id="module-2" class="hidden transition-all duration-500">
+            <div class="bg-white rounded-xl shadow-card p-6 mb-8">
+                <h2 class="text-2xl font-bold mb-6 text-primary flex items-center">
+                    <i class="fa fa-building-o mr-2"></i>第一轮房间测试
+                </h2>
+                
+                <div class="mb-6">
+                    <h3 class="text-lg font-semibold mb-2">玩家列表</h3>
+                    <div id="players-module-2" class="flex flex-wrap gap-2 p-3 bg-secondary rounded-lg min-h-[80px]">
+                        <!-- 玩家将通过JS动态生成 -->
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    <div id="small-room-2" class="room border-2 border-gray-300 rounded-lg p-4 hover:border-primary transition-all-300">
+                        <h3 class="font-semibold mb-2 flex justify-between">
+                            <span>小房间 (限3人)</span>
+                            <span id="small-count-2" class="bg-light px-2 py-1 rounded-full text-sm">0/3</span>
+                        </h3>
+                        <div class="room-players min-h-[100px] p-2 bg-gray-50 rounded"></div>
+                        <div id="small-guard-area" class="mt-3 hidden">
+                            <label class="block text-sm font-medium mb-1">选择被监管者：</label>
+                            <div class="room-guards flex flex-wrap gap-2"></div>
+                        </div>
+                    </div>
+                    
+                    <div id="large-room-2" class="room border-2 border-gray-300 rounded-lg p-4 hover:border-primary transition-all-300">
+                        <h3 class="font-semibold mb-2 flex justify-between">
+                            <span>大房间 (限7人)</span>
+                            <span id="large-count-2" class="bg-light px-2 py-1 rounded-full text-sm">0/7</span>
+                        </h3>
+                        <div class="room-players min-h-[100px] p-2 bg-gray-50 rounded"></div>
+                        <div id="large-guard-area" class="mt-3 hidden">
+                            <label class="block text-sm font-medium mb-1">选择被监管者：</label>
+                            <div class="room-guards flex flex-wrap gap-2"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-4 text-center">
+                    <button id="random-module-2" class="bg-dark hover:bg-dark/90 text-white font-bold py-2 px-6 rounded-full shadow-md scale-hover">
+                        随机分配房间
+                    </button>
+                </div>
+                
+                <div class="flex justify-between">
+                    <button id="back-to-1" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-6 rounded-full shadow-md scale-hover">
+                        返回
+                    </button>
+                    <button id="confirm-2" class="bg-primary hover:bg-primary/90 text-white font-bold py-2 px-6 rounded-full shadow-md scale-hover" disabled>
+                        确认分配
+                    </button>
+                </div>
+            </div>
+            
+            <div id="result-2" class="hidden bg-white rounded-xl shadow-card p-6 mb-8">
+                <h3 class="text-xl font-bold mb-4 text-center">第一轮测试结果</h3>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- 小房间结果 -->
+                    <div class="text-center p-4 border rounded-lg">
+                        <h4 class="font-semibold mb-2">小房间 (3人)</h4>
+                        <div id="small-result-2" class="text-lg mb-3"></div>
+                        <p class="text-gray-600 mb-2">被监管者: <span id="small-guard-2"></span></p>
+                        
+                        <!-- 小房间成员列表 -->
+                        <div class="mt-4">
+                            <p class="text-sm font-medium text-gray-700 mb-1">房间成员:</p>
+                            <div id="small-room-members-2" class="flex flex-wrap justify-center gap-2 text-sm"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- 大房间结果 -->
+                    <div class="text-center p-4 border rounded-lg">
+                        <h4 class="font-semibold mb-2">大房间 (7人)</h4>
+                        <div id="large-result-2" class="text-lg mb-3"></div>
+                        <p class="text-gray-600 mb-2">被监管者: <span id="large-guard-2"></span></p>
+                        
+                        <!-- 大房间成员列表 -->
+                        <div class="mt-4">
+                            <p class="text-sm font-medium text-gray-700 mb-1">房间成员:</p>
+                            <div id="large-room-members-2" class="flex flex-wrap justify-center gap-2 text-sm"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 底部按钮（添加返回按钮） -->
+                <div class="flex justify-between mt-6">
+                    <button id="back-to-2-config" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-6 rounded-full shadow-md scale-hover">
+                        返回修改
+                    </button>
+                    <button id="to-module-3" class="bg-primary hover:bg-primary/90 text-white font-bold py-2 px-6 rounded-full shadow-md scale-hover">
+                        进入第二轮测试
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- 模块3：第二轮房间测试 -->
+        <section id="module-3" class="hidden transition-all duration-500">
+            <div class="bg-white rounded-xl shadow-card p-6 mb-8">
+                <h2 class="text-2xl font-bold mb-6 text-primary flex items-center">
+                    <i class="fa fa-building mr-2"></i>第二轮房间测试
+                </h2>
+                
+                <div class="mb-6">
+                    <h3 class="text-lg font-semibold mb-2">玩家列表</h3>
+                    <div id="players-module-3" class="flex flex-wrap gap-2 p-3 bg-secondary rounded-lg min-h-[80px]">
+                        <!-- 玩家将通过JS动态生成 -->
+                    </div>
+                </div>
+                
+                <div class="mb-6">
+                    <h3 class="text-lg font-semibold mb-2">第一轮测试结果</h3>
+                    <div class="bg-gray-50 p-3 rounded-lg text-sm text-gray-700">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <!-- 第一轮小房间结果 -->
+                            <div>
+                                <strong>小房间</strong>: <span id="prev-small-result"></span><br>
+                                被监管者: <span id="prev-small-guard"></span>
+                                <!-- 新增：第一轮小房间成员 -->
+                                <div class="mt-2">
+                                    <p class="font-medium">成员:</p>
+                                    <div id="prev-small-members" class="flex flex-wrap gap-1 mt-1"></div>
+                                </div>
+                            </div>
+                            
+                            <!-- 第一轮大房间结果 -->
+                            <div>
+                                <strong>大房间</strong>: <span id="prev-large-result"></span><br>
+                                被监管者: <span id="prev-large-guard"></span>
+                                <!-- 新增：第一轮大房间成员 -->
+                                <div class="mt-2">
+                                    <p class="font-medium">成员:</p>
+                                    <div id="prev-large-members" class="flex flex-wrap gap-1 mt-1"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    <div id="small-room-3" class="room border-2 border-gray-300 rounded-lg p-4 hover:border-primary transition-all-300">
+                        <h3 class="font-semibold mb-2 flex justify-between">
+                            <span>小房间 (限3人)</span>
+                            <span id="small-count-3" class="bg-light px-2 py-1 rounded-full text-sm">0/3</span>
+                        </h3>
+                        <div class="room-players min-h-[100px] p-2 bg-gray-50 rounded"></div>
+                        <div id="small-guard-area-3" class="mt-3 hidden">
+                            <label class="block text-sm font-medium mb-1">选择被监管者：</label>
+                            <div class="room-guards flex flex-wrap gap-2"></div>
+                        </div>
+                    </div>
+                    
+                    <div id="large-room-3" class="room border-2 border-gray-300 rounded-lg p-4 hover:border-primary transition-all-300">
+                        <h3 class="font-semibold mb-2 flex justify-between">
+                            <span>大房间 (限7人)</span>
+                            <span id="large-count-3" class="bg-light px-2 py-1 rounded-full text-sm">0/7</span>
+                        </h3>
+                        <div class="room-players min-h-[100px] p-2 bg-gray-50 rounded"></div>
+                        <div id="large-guard-area-3" class="mt-3 hidden">
+                            <label class="block text-sm font-medium mb-1">选择被监管者：</label>
+                            <div class="room-guards flex flex-wrap gap-2"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-4 text-center">
+                    <button id="random-module-3" class="bg-dark hover:bg-dark/90 text-white font-bold py-2 px-6 rounded-full shadow-md scale-hover">
+                        随机分配房间
+                    </button>
+                </div>
+                
+                <div class="flex justify-between">
+                    <button id="back-to-2" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-6 rounded-full shadow-md scale-hover">
+                        返回
+                    </button>
+                    <button id="confirm-3" class="bg-primary hover:bg-primary/90 text-white font-bold py-2 px-6 rounded-full shadow-md scale-hover" disabled>
+                        确认分配
+                    </button>
+                </div>
+            </div>
+            
+            <div id="result-3" class="hidden bg-white rounded-xl shadow-card p-6 mb-8">
+                <h3 class="text-xl font-bold mb-4 text-center">第二轮测试结果</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- 小房间结果 -->
+                    <div class="text-center p-4 border rounded-lg">
+                        <h4 class="font-semibold mb-2">小房间 (3人)</h4>
+                        <div id="small-result-3" class="text-lg mb-3"></div>
+                        <p class="text-gray-600 mb-2">被监管者: <span id="small-guard-3"></span></p>
+                        
+                        <!-- 小房间成员列表 -->
+                        <div class="mt-4">
+                            <p class="text-sm font-medium text-gray-700 mb-1">房间成员:</p>
+                            <div id="small-room-members-3" class="flex flex-wrap justify-center gap-2 text-sm"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- 大房间结果 -->
+                    <div class="text-center p-4 border rounded-lg">
+                        <h4 class="font-semibold mb-2">大房间 (7人)</h4>
+                        <div id="large-result-3" class="text-lg mb-3"></div>
+                        <p class="text-gray-600 mb-2">被监管者: <span id="large-guard-3"></span></p>
+                        
+                        <!-- 大房间成员列表 -->
+                        <div class="mt-4">
+                            <p class="text-sm font-medium text-gray-700 mb-1">房间成员:</p>
+                            <div id="large-room-members-3" class="flex flex-wrap justify-center gap-2 text-sm"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 底部按钮（添加返回按钮） -->
+                <div class="flex justify-between mt-6">
+                    <button id="back-to-3-config" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-6 rounded-full shadow-md scale-hover">
+                        返回修改
+                    </button>
+                    <button id="to-module-4" class="bg-primary hover:bg-primary/90 text-white font-bold py-2 px-6 rounded-full shadow-md scale-hover">
+                        进入第三轮测试
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- 模块4：第三轮房间测试 -->
+        <section id="module-4" class="hidden transition-all duration-500">
+            <div class="bg-white rounded-xl shadow-card p-6 mb-8">
+                <h2 class="text-2xl font-bold mb-6 text-primary flex items-center">
+                    <i class="fa fa-building mr-2"></i>第三轮房间测试
+                </h2>
+                
+                <div class="mb-6">
+                    <h3 class="text-lg font-semibold mb-2">玩家列表</h3>
+                    <div id="players-module-4" class="flex flex-wrap gap-2 p-3 bg-secondary rounded-lg min-h-[80px]">
+                        <!-- 玩家将通过JS动态生成 -->
+                    </div>
+                </div>
+                
+                <div class="mb-6">
+                    <h3 class="text-lg font-semibold mb-2">前两轮测试结果</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <!-- 第一轮结果 -->
+                        <div class="bg-gray-50 p-3 rounded-lg text-sm text-gray-700">
+                            <strong>第一轮</strong>
+                            <div class="grid grid-cols-2 gap-2 mt-1">
+                                <div>小房间: <span id="prev1-small-result"></span></div>
+                                <div>大房间: <span id="prev1-large-result"></span></div>
+                            </div>
+                            <!-- 第一轮成员列表 -->
+                            <div class="mt-2">
+                                <p class="font-medium">小房间成员:</p>
+                                <div id="prev1-small-members" class="flex flex-wrap gap-1 mt-1"></div>
+                            </div>
+                            <div class="mt-2">
+                                <p class="font-medium">大房间成员:</p>
+                                <div id="prev1-large-members" class="flex flex-wrap gap-1 mt-1"></div>
+                            </div>
+                        </div>
+                        
+                        <!-- 第二轮结果 -->
+                        <div class="bg-gray-50 p-3 rounded-lg text-sm text-gray-700">
+                            <strong>第二轮</strong>
+                            <div class="grid grid-cols-2 gap-2 mt-1">
+                                <div>小房间: <span id="prev2-small-result"></span></div>
+                                <div>大房间: <span id="prev2-large-result"></span></div>
+                            </div>
+                            <!-- 第二轮成员列表 -->
+                            <div class="mt-2">
+                                <p class="font-medium">小房间成员:</p>
+                                <div id="prev2-small-members" class="flex flex-wrap gap-1 mt-1"></div>
+                            </div>
+                            <div class="mt-2">
+                                <p class="font-medium">大房间成员:</p>
+                                <div id="prev2-large-members" class="flex flex-wrap gap-1 mt-1"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    <div id="room-1-4" class="room border-2 border-gray-300 rounded-lg p-4 hover:border-primary transition-all-300">
+                        <h3 class="font-semibold mb-2">房间 1</h3>
+                        <div class="room-players min-h-[100px] p-2 bg-gray-50 rounded"></div>
+                        <div id="room1-guard-area-4" class="mt-3 hidden">
+                            <label class="block text-sm font-medium mb-1">选择被监管者：</label>
+                            <div class="room-guards flex flex-wrap gap-2"></div>
+                        </div>
+                    </div>
+                    
+                    <div id="room-2-4" class="room border-2 border-gray-300 rounded-lg p-4 hover:border-primary transition-all-300">
+                        <h3 class="font-semibold mb-2">房间 2</h3>
+                        <div class="room-players min-h-[100px] p-2 bg-gray-50 rounded"></div>
+                        <div id="room2-guard-area-4" class="mt-3 hidden">
+                            <label class="block text-sm font-medium mb-1">选择被监管者：</label>
+                            <div class="room-guards flex flex-wrap gap-2"></div>
+                        </div>
+                    </div>
+                    
+                    <div id="room-3-4" class="room border-2 border-gray-300 rounded-lg p-4 hover:border-primary transition-all-300">
+                        <h3 class="font-semibold mb-2">房间 3</h3>
+                        <div class="room-players min-h-[100px] p-2 bg-gray-50 rounded"></div>
+                        <div id="room3-guard-area-4" class="mt-3 hidden">
+                            <label class="block text-sm font-medium mb-1">选择被监管者：</label>
+                            <div class="room-guards flex flex-wrap gap-2"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-4 text-center">
+                    <button id="random-module-4" class="bg-dark hover:bg-dark/90 text-white font-bold py-2 px-6 rounded-full shadow-md scale-hover">
+                        随机分配房间
+                    </button>
+                </div>
+                
+                <div class="flex justify-between">
+                    <button id="back-to-3" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-6 rounded-full shadow-md scale-hover">
+                        返回
+                    </button>
+                    <button id="confirm-4" class="bg-primary hover:bg-primary/90 text-white font-bold py-2 px-6 rounded-full shadow-md scale-hover" disabled>
+                        确认分配
+                    </button>
+                </div>
+            </div>
+            
+            <div id="result-4" class="hidden bg-white rounded-xl shadow-card p-6 mb-8">
+                <h3 class="text-xl font-bold mb-4 text-center">第三轮测试结果</h3>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <!-- 房间1结果 -->
+                    <div class="text-center p-4 border rounded-lg">
+                        <h4 class="font-semibold mb-2">房间 1</h4>
+                        <div id="result-1-4" class="text-lg"></div>
+                        <p class="text-gray-600 mt-2">被监管者: <span id="guard-1-4"></span></p>
+                        
+                        <!-- 房间1成员列表 -->
+                        <div class="mt-4">
+                            <p class="text-sm font-medium text-gray-700 mb-1">房间成员:</p>
+                            <div id="room1-members-4" class="flex flex-wrap justify-center gap-2 text-sm"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- 房间2结果 -->
+                    <div class="text-center p-4 border rounded-lg">
+                        <h4 class="font-semibold mb-2">房间 2</h4>
+                        <div id="result-2-4" class="text-lg"></div>
+                        <p class="text-gray-600 mt-2">被监管者: <span id="guard-2-4"></span></p>
+                        
+                        <!-- 房间2成员列表 -->
+                        <div class="mt-4">
+                            <p class="text-sm font-medium text-gray-700 mb-1">房间成员:</p>
+                            <div id="room2-members-4" class="flex flex-wrap justify-center gap-2 text-sm"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- 房间3结果 -->
+                    <div class="text-center p-4 border rounded-lg">
+                        <h4 class="font-semibold mb-2">房间 3</h4>
+                        <div id="result-3-4" class="text-lg"></div>
+                        <p class="text-gray-600 mt-2">被监管者: <span id="guard-3-4"></span></p>
+                        
+                        <!-- 房间3成员列表 -->
+                        <div class="mt-4">
+                            <p class="text-sm font-medium text-gray-700 mb-1">房间成员:</p>
+                            <div id="room3-members-4" class="flex flex-wrap justify-center gap-2 text-sm"></div>
+                        </div>
+                    </div>
+                </div>
+                <!-- 替换原有的result-4底部按钮区域 -->
+               <div class="flex justify-between mt-6">
+                    <button id="back-to-4-config" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-6 rounded-full shadow-md scale-hover">
+                    返回修改
+                   </button>
+                    <button id="to-module-5" class="bg-primary hover:bg-primary/90 text-white font-bold py-2 px-6 rounded-full shadow-md scale-hover">
+                      进入最终投票
+                   </button>
+                </div>
+            </div>
+        </section>
+
+       <!-- 模块5：最终投票模块（完整替换投票区域） -->
+<section id="module-5" class="hidden transition-all duration-500">
+    <div class="bg-white rounded-xl shadow-card p-6 mb-8">
+        <h2 class="text-2xl font-bold mb-6 text-primary flex items-center">
+            <i class="fa fa-ballot-box mr-2"></i>最终投票
+        </h2>
+        
+        <!-- 三轮测试结果汇总（保持不变） -->
+        <div class="mb-6">
+            <h3 class="text-lg font-semibold mb-2">三轮测试结果汇总</h3>
+            <div class="overflow-x-auto">
+                <table class="min-w-full bg-gray-50 rounded-lg">
+                    <thead>
+                        <tr class="bg-dark text-white">
+                            <th class="py-2 px-4 text-left">测试轮次</th>
+                            <th class="py-2 px-4 text-left">房间</th>
+                            <th class="py-2 px-4 text-left">荔枝状态</th>
+                            <th class="py-2 px-4 text-left">被监管者</th>
+                            <th class="py-2 px-4 text-left">房间成员</th>
+                        </tr>
+                    </thead>
+                    <tbody id="vote-results-summary">
+                        <!-- 结果将通过JS动态生成 -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- 新投票区域（完整替换） -->
+        <div class="mb-6">
+            <div class="flex justify-between items-center mb-3">
+                <h3 class="text-lg font-semibold">最终投票</h3>
+                <div class="bg-light px-3 py-1 rounded-full text-sm">
+                    已用票数: <span id="used-votes">0</span>/30
+                </div>
+            </div>
+            
+            <p class="text-gray-700 mb-4">每位玩家有3票，总共30票。请为怀疑是「荔枝瘾」的玩家分配票数（0-10票）：</p>
+            
+            <!-- 票数输入区域 -->
+            <div id="voting-controls" class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                <!-- 票数控制器将通过JS动态生成 -->
+            </div>
+            
+            <div class="flex justify-between">
+                <button id="back-to-4" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-6 rounded-full shadow-md scale-hover">
+                    返回
+                </button>
+                <button id="submit-vote" class="bg-primary hover:bg-primary/90 text-white font-bold py-2 px-6 rounded-full shadow-md scale-hover" disabled>
+                  提交投票
+                </button>
+            </div>
+        </div>
+    </div>
+</section>
+
+
+
+
+
+     <!-- 模块6：胜负判定模块（完整修改） -->
+<section id="module-6" class="hidden transition-all duration-500">
+    <div class="bg-white rounded-xl shadow-card p-6 mb-8">
+        <h2 class="text-2xl font-bold mb-6 text-primary flex items-center">
+            <i class="fa fa-trophy mr-2"></i>游戏结果
+        </h2>
+        
+        <!-- 新增返回按钮 -->
+        <div class="mb-6">
+            <button id="back-to-5" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-6 rounded-full shadow-md scale-hover">
+                返回投票
+            </button>
+        </div>
+        
+        <div class="mb-8 text-center">
+            <div id="winner-banner" class="text-3xl font-bold mb-4 py-4 rounded-lg">
+                <!-- 获胜方将在这里显示 -->
+            </div>
+        </div>
+        
+         <div class="mb-8">
+            <h3 class="text-lg font-semibold mb-4 text-center">得票前三名如下：</h3>
+            <!-- 添加这个容器用于显示前三名 -->
+            <div id="top-vote-results" class="flex flex-col items-center gap-4">
+                <!-- 投票结果将通过JS动态生成 -->
+            </div>
+        </div>
+        
+        <!-- 真实身份区域 -->
+        <div class="mb-8">
+            <h3 class="text-lg font-semibold mb-4 text-center">真实身份</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 p-4 bg-gray-50 rounded-lg max-h-[300px] overflow-y-auto">
+                <div id="full-vote-results">
+                    <!-- 玩家真实身份将通过JS动态生成 -->
+                </div>
+            </div>
+        </div>
+        
+        
+        <div class="text-center">
+            <button id="restart-game" class="bg-primary hover:bg-primary/90 text-white font-bold py-3 px-8 rounded-full shadow-md scale-hover">
+                重新开始游戏
+            </button>
+        </div>
+    </div>
+</section>
+
+</main>
+
+    <!-- 页脚 -->
+    <footer class="bg-accent text-white py-4">
+        <div class="container mx-auto px-4 text-center">
+            <p>荔枝瘾 -DPF &copy; 2025 - 推理游戏</p>
+        </div>
+    </footer>
+
+    <script>
+        // 游戏数据
+        const gameData = {
+            players: [],
+            lycheeAddicts: [],
+            currentPhase: 1,
+            module2: {
+                smallRoom: [],
+                largeRoom: [],
+                smallGuard: null,
+                largeGuard: null,
+                smallResult: null,
+                largeResult: null
+            },
+            module3: {
+                smallRoom: [],
+                largeRoom: [],
+                smallGuard: null,
+                largeGuard: null,
+                smallResult: null,
+                largeResult: null
+            },
+            module4: {
+                room1: [],
+                room2: [],
+                room3: [],
+                guard1: null,
+                guard2: null,
+                guard3: null,
+                result1: null,
+                result2: null,
+                result3: null
+            },
+             votes: [],          // 存储每个玩家的投票（数组，每个元素是该玩家投的3个人ID）
+             voteDetails: {},    // 新增：存储每个人获得的票数详情，格式 {playerId: {count: 3, from: [voterId1, voterId2, ...]}}
+             currentVoter: 0
+        };
+
+        // 中文数字（一到十）
+        const chineseNumbers = ['一', '二', '三', '四', '五', '六', '七', '八', '九', '十'];
+
+        // DOM 元素加载完成后初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            initModule1();
+            assignLycheeAddicts();
+            setupEventListeners();
+
+         document.getElementById('back-to-5').addEventListener('click', () => {
+         // 隐藏模块6，显示模块5
+         document.getElementById('module-6').classList.add('hidden');
+         document.getElementById('module-5').classList.remove('hidden');
+         // 更新游戏状态
+         gameData.currentPhase = 5;
+         updateGameStatus();
+         });
+
+        });
+
+        // 初始化模块1：基础设定
+        function initModule1() {
+            // 清空玩家数据
+            gameData.players = [];
+            gameData.lycheeAddicts = [];
+            
+            const playersContainer = document.querySelector('#module-1 .grid');
+            playersContainer.innerHTML = '';
+            
+            // 创建10个玩家方框
+            for (let i = 0; i < 10; i++) {
+                const playerId = i + 1;
+                const defaultName = `玩家${chineseNumbers[i]}`;
+                
+                // 存储玩家数据
+                gameData.players.push({
+                    id: playerId,
+                    name: defaultName,
+                    isLycheeAddict: false,
+                    revealed: false
+                });
+                
+                // 创建玩家方框元素
+                const playerBox = document.createElement('div');
+                playerBox.className = 'bg-white border-2 border-gray-300 rounded-lg p-3 text-center scale-hover';
+                playerBox.dataset.playerId = playerId;
+                
+                playerBox.innerHTML = `
+                    <div class="font-bold mb-2">玩家${chineseNumbers[i]}</div>
+                    <input type="text" placeholder="输入姓名" class="player-name-input w-full text-center border rounded py-1 mb-2" data-player-id="${playerId}">
+                    <button class="toggle-identity text-sm text-gray-600 hover:text-primary">查看身份</button>
+                    <div class="identity hidden mt-2 text-sm font-medium"></div>
+                `;
+                
+                playersContainer.appendChild(playerBox);
+            }
+            
+            // 为身份切换按钮添加事件
+            document.querySelectorAll('.toggle-identity').forEach(button => {
+                button.addEventListener('click', (e) => {
+                    const box = e.target.closest('[data-player-id]');
+                    const playerId = parseInt(box.dataset.playerId);
+                    const player = gameData.players.find(p => p.id === playerId);
+                    const identityDiv = box.querySelector('.identity');
+                    
+                    // 切换显示状态
+                    player.revealed = !player.revealed;
+                    
+                    if (player.revealed) {
+                        identityDiv.textContent = player.isLycheeAddict ? '荔枝瘾成员' : '普通成员';
+                        identityDiv.className = `identity mt-2 text-sm font-medium ${player.isLycheeAddict ? 'text-primary' : 'text-dark'}`;
+                    } else {
+                        identityDiv.className = 'identity hidden mt-2 text-sm font-medium';
+                    }
+                });
+            });
+            
+            // 为姓名输入框添加事件
+            document.querySelectorAll('.player-name-input').forEach(input => {
+                input.addEventListener('change', (e) => {
+                    const playerId = parseInt(e.target.dataset.playerId);
+                    const player = gameData.players.find(p => p.id === playerId);
+                    const newName = e.target.value.trim();
+                    
+                    if (newName) {
+                        player.name = newName;
+                        e.target.closest('.bg-white').querySelector('.font-bold').textContent = newName;
+                    } else {
+                        // 恢复默认名称
+                        const index = playerId - 1;
+                        player.name = `玩家${chineseNumbers[index]}`;
+                        e.target.closest('.bg-white').querySelector('.font-bold').textContent = player.name;
+                    }
+                });
+            });
+        }
+
+        // 设置所有事件监听器
+        function setupEventListeners() {
+            // 开始游戏按钮
+            document.getElementById('start-game').addEventListener('click', startGame);
+            
+            // 帮助按钮和模态框
+            document.getElementById('help-btn').addEventListener('click', () => {
+                document.getElementById('help-modal').classList.remove('hidden');
+            });
+            
+            document.getElementById('close-help').addEventListener('click', () => {
+                document.getElementById('help-modal').classList.add('hidden');
+            });
+            
+            // 模块2返回按钮
+            document.getElementById('back-to-1').addEventListener('click', () => {
+                showModule(1);
+            });
+            
+            // 模块2结果页的返回修改按钮
+            document.getElementById('back-to-2-config').addEventListener('click', () => {
+                document.querySelector('#module-2 > div:first-child').classList.remove('hidden');
+                document.getElementById('result-2').classList.add('hidden');
+            });
+            
+            // 确认模块2分配
+            document.getElementById('confirm-2').addEventListener('click', confirmModule2);
+            
+            // 模块2随机分配按钮
+            document.getElementById('random-module-2').addEventListener('click', randomAssignModule2);
+            
+            // 进入模块3
+            document.getElementById('to-module-3').addEventListener('click', () => {
+                initModule3();
+                showModule(3);
+            });
+            
+            // 模块3返回按钮
+            document.getElementById('back-to-2').addEventListener('click', () => {
+                showModule(2);
+                document.getElementById('result-2').classList.remove('hidden');
+                document.querySelector('#module-2 > div:first-child').classList.add('hidden');
+            });
+            
+            // 模块3结果页的返回修改按钮
+            document.getElementById('back-to-3-config').addEventListener('click', () => {
+                document.querySelector('#module-3 > div:first-child').classList.remove('hidden');
+                document.getElementById('result-3').classList.add('hidden');
+            });
+            
+            // 确认模块3分配
+            document.getElementById('confirm-3').addEventListener('click', confirmModule3);
+            
+            // 模块3随机分配按钮
+            document.getElementById('random-module-3').addEventListener('click', randomAssignModule3);
+            
+            // 进入模块4
+            document.getElementById('to-module-4').addEventListener('click', () => {
+                initModule4();
+                showModule(4);
+            });
+            
+            // 模块4返回按钮
+            document.getElementById('back-to-3').addEventListener('click', () => {
+                showModule(3);
+                document.getElementById('result-3').classList.remove('hidden');
+                document.querySelector('#module-3 > div:first-child').classList.add('hidden');
+            });
+            
+             // 模块4结果页的返回修改按钮
+              document.getElementById('back-to-4-config').addEventListener('click', () => {
+              // 显示配置界面，隐藏结果界面
+                   document.querySelector('#module-4 > div:first-child').classList.remove('hidden');
+                   document.getElementById('result-4').classList.add('hidden');
+              });
+
+
+            // 确认模块4分配
+            document.getElementById('confirm-4').addEventListener('click', confirmModule4);
+            
+            // 模块4随机分配按钮
+            document.getElementById('random-module-4').addEventListener('click', randomAssignModule4);
+            
+            // 进入模块5
+            document.getElementById('to-module-5').addEventListener('click', () => {
+                initModule5();
+                showModule(5);
+            });
+            
+            // 模块5返回按钮
+            document.getElementById('back-to-4').addEventListener('click', () => {
+                showModule(4);
+                document.getElementById('result-4').classList.remove('hidden');
+                document.querySelector('#module-4 > div:first-child').classList.add('hidden');
+            });
+            
+// 从模块6返回模块5的按钮事件（修改版）
+document.getElementById('back-to-5').addEventListener('click', () => {
+    hideAllModules();
+    document.getElementById('module-5').classList.remove('hidden');
+    gameData.currentPhase = 5;
+    updateGameStatus();
+    
+    // 重新启用提交按钮
+    document.getElementById('submit-vote').disabled = false;
+});
+
+
+
+
+// 提交投票（修改版）
+document.getElementById('submit-vote').addEventListener('click', () => {
+    const totalVotes = getTotalVotes();
+    if (totalVotes !== 30) return;
+    
+    // 使用新的模块6显示函数
+    showModule6();
+});
+            
+            // 重新开始游戏
+            document.getElementById('restart-game').addEventListener('click', () => {
+                gameData.currentPhase = 1;
+                updateGameStatus();
+                initModule1(); // 重新初始化玩家
+                assignLycheeAddicts(); // 重新分配身份
+                showModule(1);
+            });
+        }
+
+        // 分配荔枝瘾成员
+        function assignLycheeAddicts() {
+            // 重置所有玩家身份
+            gameData.players.forEach(player => {
+                player.isLycheeAddict = false;
+            });
+            
+            // 随机选择3名荔枝瘾成员
+            const addictsIndex = new Set();
+            while (addictsIndex.size < 3) {
+                addictsIndex.add(Math.floor(Math.random() * 10));
+            }
+            
+            // 保存荔枝瘾成员ID
+            gameData.lycheeAddicts = [];
+            addictsIndex.forEach(index => {
+                gameData.players[index].isLycheeAddict = true;
+                gameData.lycheeAddicts.push(index + 1); // 玩家ID从1开始
+            });
+        }
+
+        // 开始游戏
+        function startGame() {
+            // 直接进入第一轮测试，不修改身份
+            initModule2();
+            showModule(2);
+        }
+
+        // 初始化模块2
+        function initModule2() {
+            // 重置模块2数据
+            gameData.module2 = {
+                smallRoom: [],
+                largeRoom: [],
+                smallGuard: null,
+                largeGuard: null,
+                smallResult: null,
+                largeResult: null
+            };
+            
+            // 显示玩家列表
+            const playersContainer = document.getElementById('players-module-2');
+            playersContainer.innerHTML = '';
+            
+            gameData.players.forEach(player => {
+                const playerEl = createDraggablePlayer(player);
+                playersContainer.appendChild(playerEl);
+            });
+            
+            // 清空房间
+            document.querySelector('#small-room-2 .room-players').innerHTML = '';
+            document.querySelector('#large-room-2 .room-players').innerHTML = '';
+            
+            // 重置计数
+            document.getElementById('small-count-2').textContent = '0/3';
+            document.getElementById('large-count-2').textContent = '0/7';
+            
+            // 隐藏监管选择区域
+            document.querySelectorAll('#module-2 .hidden').forEach(el => {
+                el.classList.add('hidden');
+            });
+            
+            // 隐藏结果，显示配置区域
+            document.getElementById('result-2').classList.add('hidden');
+            document.querySelector('#module-2 > div:first-child').classList.remove('hidden');
+            
+            // 禁用确认按钮
+            document.getElementById('confirm-2').disabled = true;
+            
+            // 设置房间拖放事件
+            setupRoomDropZone('small-room-2', 3, 'small-count-2', 'module2', 'smallRoom');
+            setupRoomDropZone('large-room-2', 7, 'large-count-2', 'module2', 'largeRoom');
+        }
+
+        // 模块2随机分配函数
+        function randomAssignModule2() {
+            // 清空现有分配
+            gameData.module2.smallRoom = [];
+            gameData.module2.largeRoom = [];
+            gameData.module2.smallGuard = null;
+            gameData.module2.largeGuard = null;
+            
+            // 清空房间显示
+            document.querySelector('#small-room-2 .room-players').innerHTML = '';
+            document.querySelector('#large-room-2 .room-players').innerHTML = '';
+            document.getElementById('players-module-2').innerHTML = '';
+            
+            // 重新生成所有玩家
+            gameData.players.forEach(player => {
+                const playerEl = createDraggablePlayer(player);
+                document.getElementById('players-module-2').appendChild(playerEl);
+            });
+            
+            // 随机打乱玩家顺序
+            const shuffledPlayers = [...gameData.players].sort(() => 0.5 - Math.random());
+            
+            // 分配3人到小房间，7人到大房间
+            const smallRoomPlayers = shuffledPlayers.slice(0, 3);
+            const largeRoomPlayers = shuffledPlayers.slice(3, 10);
+            
+            // 添加到小房间
+            smallRoomPlayers.forEach(player => {
+                gameData.module2.smallRoom.push(player.id);
+            });
+            
+            // 添加到大房间
+            largeRoomPlayers.forEach(player => {
+                gameData.module2.largeRoom.push(player.id);
+            });
+            
+            // 自动选择第一个玩家作为监管者
+            if (smallRoomPlayers.length > 0) {
+                gameData.module2.smallGuard = smallRoomPlayers[0].id;
+            }
+            if (largeRoomPlayers.length > 0) {
+                gameData.module2.largeGuard = largeRoomPlayers[0].id;
+            }
+            
+            // 更新显示
+            updateRoomCount('module2', 'smallRoom', 'small-count-2');
+            updateRoomCount('module2', 'largeRoom', 'large-count-2');
+            
+            const smallContainer = document.querySelector('#small-room-2 .room-players');
+            const largeContainer = document.querySelector('#large-room-2 .room-players');
+            
+            renderRoomPlayers('module2', 'smallRoom', smallContainer);
+            renderRoomPlayers('module2', 'largeRoom', largeContainer);
+            
+            // 检查是否完成
+            checkRoomComplete('module2');
+        }
+
+        // 创建可拖拽的玩家元素
+        function createDraggablePlayer(player) {
+            const playerEl = document.createElement('div');
+            playerEl.className = 'player-item bg-white border border-gray-300 rounded-full px-3 py-1 text-sm flex items-center justify-center cursor-move scale-hover';
+            playerEl.draggable = true;
+            playerEl.dataset.playerId = player.id;
+            playerEl.innerHTML = `
+                <span>${player.name}</span>
+            `;
+            
+            // 添加拖拽事件
+            playerEl.addEventListener('dragstart', (e) => {
+                e.dataTransfer.setData('text/plain', player.id);
+                setTimeout(() => {
+                    playerEl.classList.add('drag-ghost');
+                }, 0);
+            });
+            
+            playerEl.addEventListener('dragend', () => {
+                playerEl.classList.remove('drag-ghost');
+            });
+            
+            return playerEl;
+        }
+
+        // 设置房间拖放区域
+        function setupRoomDropZone(roomId, maxPlayers, countElementId, module, roomProp) {
+            const roomEl = document.getElementById(roomId);
+            const playersContainer = roomEl.querySelector('.room-players');
+            const countEl = document.getElementById(countElementId);
+            
+            // 拖放事件
+            roomEl.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                roomEl.classList.add('room-highlight');
+            });
+            
+            roomEl.addEventListener('dragleave', () => {
+                roomEl.classList.remove('room-highlight');
+            });
+            
+            roomEl.addEventListener('drop', (e) => {
+                e.preventDefault();
+                roomEl.classList.remove('room-highlight');
+                
+                const playerId = parseInt(e.dataTransfer.getData('text/plain'));
+                const currentPlayers = gameData[module][roomProp];
+                
+                // 检查是否已达到最大人数
+                if (currentPlayers.length >= maxPlayers) {
+                    showNotification('已达到房间最大人数限制');
+                    return;
+                }
+                
+                // 检查玩家是否已在其他房间
+                let playerInOtherRoom = false;
+                let otherRoomProp = '';
+                
+                if (module === 'module2' || module === 'module3') {
+                    otherRoomProp = roomProp === 'smallRoom' ? 'largeRoom' : 'smallRoom';
+                    if (gameData[module][otherRoomProp].includes(playerId)) {
+                        playerInOtherRoom = true;
+                    }
+                } else if (module === 'module4') {
+                    // 检查其他两个房间
+                    const otherRooms = ['room1', 'room2', 'room3'].filter(r => r !== roomProp);
+                    otherRooms.forEach(r => {
+                        if (gameData[module][r].includes(playerId)) {
+                            playerInOtherRoom = true;
+                            otherRoomProp = r;
+                        }
+                    });
+                }
+                
+                // 如果玩家在其他房间，先移除
+                if (playerInOtherRoom) {
+                    removePlayerFromRoom(module, otherRoomProp, playerId);
+                }
+                
+                // 添加玩家到当前房间
+                if (!currentPlayers.includes(playerId)) {
+                    gameData[module][roomProp].push(playerId);
+                    updateRoomCount(module, roomProp, countElementId);
+                    renderRoomPlayers(module, roomProp, playersContainer);
+                    checkRoomComplete(module);
+                }
+            });
+        }
+
+        // 从房间移除玩家
+        function removePlayerFromRoom(module, roomProp, playerId) {
+            gameData[module][roomProp] = gameData[module][roomProp].filter(id => id !== playerId);
+            
+            // 更新对应房间的计数和显示
+            let countElementId = '';
+            let roomId = '';
+            
+            if (module === 'module2' || module === 'module3') {
+                countElementId = roomProp === 'smallRoom' ? 'small-count-2' : 'large-count-2';
+                if (module === 'module3') {
+                    countElementId = roomProp === 'smallRoom' ? 'small-count-3' : 'large-count-3';
+                }
+                roomId = module === 'module2' 
+                    ? (roomProp === 'smallRoom' ? 'small-room-2' : 'large-room-2')
+                    : (roomProp === 'smallRoom' ? 'small-room-3' : 'large-room-3');
+            } else if (module === 'module4') {
+                const roomNum = roomProp.replace('room', '');
+                countElementId = `room-${roomNum}-count-4`;
+                roomId = `room-${roomNum}-4`;
+            }
+            
+            updateRoomCount(module, roomProp, countElementId);
+            const playersContainer = document.querySelector(`#${roomId} .room-players`);
+            renderRoomPlayers(module, roomProp, playersContainer);
+        }
+
+        // 更新房间计数
+        function updateRoomCount(module, roomProp, countElementId) {
+            const count = gameData[module][roomProp].length;
+            const countEl = document.getElementById(countElementId);
+            
+            if (countElementId.includes('small-count')) {
+                countEl.textContent = `${count}/3`;
+            } else if (countElementId.includes('large-count')) {
+                countEl.textContent = `${count}/7`;
+            } else {
+                countEl.textContent = `${count}人`;
+            }
+        }
+
+        // 渲染房间内的玩家
+        function renderRoomPlayers(module, roomProp, container) {
+            container.innerHTML = '';
+            const playerIds = gameData[module][roomProp];
+            
+            // 生成房间内玩家列表
+            playerIds.forEach(playerId => {
+                const player = gameData.players.find(p => p.id === playerId);
+                const playerEl = document.createElement('div');
+                playerEl.className = 'player-item bg-white border border-gray-300 rounded-full px-3 py-1 text-sm flex items-center justify-center mb-1 scale-hover';
+                playerEl.dataset.playerId = playerId;
+                playerEl.innerHTML = `
+                    <span>${player.name}</span>
+                    <button class="remove-player ml-1 text-gray-400 hover:text-primary">
+                        <i class="fa fa-times-circle"></i>
+                    </button>
+                `;
+                
+                // 移除玩家按钮事件
+                playerEl.querySelector('.remove-player').addEventListener('click', () => {
+                    removePlayerFromRoom(module, roomProp, playerId);
+                    const playerListId = `players-${module}`;
+                    const playerList = document.getElementById(playerListId);
+                    const draggablePlayer = createDraggablePlayer(player);
+                    playerList.appendChild(draggablePlayer);
+                    checkRoomComplete(module);
+                });
+                
+                container.appendChild(playerEl);
+            });
+            
+            // 控制监管者区域显示
+            let guardAreaId = '';
+            if (module === 'module2') {
+                guardAreaId = roomProp === 'smallRoom' ? 'small-guard-area' : 'large-guard-area';
+            } else if (module === 'module3') {
+                guardAreaId = roomProp === 'smallRoom' ? 'small-guard-area-3' : 'large-guard-area-3';
+            } else if (module === 'module4') {
+                guardAreaId = roomProp === 'room1' ? 'room1-guard-area-4' : 
+                             roomProp === 'room2' ? 'room2-guard-area-4' : 'room3-guard-area-4';
+            }
+            
+            const guardSelection = document.getElementById(guardAreaId);
+            const guardContainer = guardSelection ? guardSelection.querySelector('.room-guards') : null;
+            
+            if (playerIds.length > 0 && guardSelection && guardContainer) {
+                guardSelection.classList.remove('hidden');
+                renderGuardOptions(playerIds, guardContainer, module, roomProp);
+            } else if (guardSelection) {
+                guardSelection.classList.add('hidden');
+                // 清除监管者选择
+                if (module === 'module3') {
+                    if (roomProp === 'smallRoom') gameData.module3.smallGuard = null;
+                    else gameData.module3.largeGuard = null;
+                } else if (module === 'module2') {
+                    if (roomProp === 'smallRoom') gameData.module2.smallGuard = null;
+                    else gameData.module2.largeGuard = null;
+                } else if (module === 'module4') {
+                    if (roomProp === 'room1') gameData.module4.guard1 = null;
+                    else if (roomProp === 'room2') gameData.module4.guard2 = null;
+                    else gameData.module4.guard3 = null;
+                }
+            }
+            
+            checkRoomComplete(module);
+        }
+
+        // 渲染监管者选择选项
+        function renderGuardOptions(playerIds, container, module, roomProp) {
+            container.innerHTML = '';
+            let selectedGuard = null;
+            
+            // 获取当前已选择的监管者
+            if (module === 'module2') {
+                selectedGuard = roomProp === 'smallRoom' ? gameData.module2.smallGuard : gameData.module2.largeGuard;
+            } else if (module === 'module3') {
+                selectedGuard = roomProp === 'smallRoom' ? gameData.module3.smallGuard : gameData.module3.largeGuard;
+            } else if (module === 'module4') {
+                if (roomProp === 'room1') selectedGuard = gameData.module4.guard1;
+                else if (roomProp === 'room2') selectedGuard = gameData.module4.guard2;
+                else selectedGuard = gameData.module4.guard3;
+            }
+            
+            playerIds.forEach(playerId => {
+                const player = gameData.players.find(p => p.id === playerId);
+                const guardOption = document.createElement('button');
+                guardOption.className = `px-3 py-1 rounded-full text-sm ${selectedGuard === playerId ? 'bg-primary text-white' : 'bg-gray-100 text-gray-800 hover:bg-gray-200'}`;
+                guardOption.dataset.playerId = playerId;
+                guardOption.textContent = player.name;
+                
+                guardOption.addEventListener('click', () => {
+                    // 更新选中的监管者
+                    if (module === 'module2') {
+                        if (roomProp === 'smallRoom') gameData.module2.smallGuard = playerId;
+                        else gameData.module2.largeGuard = playerId;
+                    } else if (module === 'module3') {
+                        if (roomProp === 'smallRoom') gameData.module3.smallGuard = playerId;
+                        else gameData.module3.largeGuard = playerId;
+                    } else if (module === 'module4') {
+                        if (roomProp === 'room1') gameData.module4.guard1 = playerId;
+                        else if (roomProp === 'room2') gameData.module4.guard2 = playerId;
+                        else gameData.module4.guard3 = playerId;
+                    }
+                    
+                    // 重新渲染选项以更新选中状态
+                    renderGuardOptions(playerIds, container, module, roomProp);
+                    checkRoomComplete(module);
+                });
+                
+                container.appendChild(guardOption);
+            });
+        }
+
+        // 检查房间配置是否完成
+        function checkRoomComplete(module) {
+            let isComplete = false;
+            
+            if (module === 'module2') {
+                // 输出当前状态到控制台（调试用）
+                console.log('小房间人数:', gameData.module2.smallRoom.length);
+                console.log('大房间人数:', gameData.module2.largeRoom.length);
+                console.log('小房间监管者:', gameData.module2.smallGuard);
+                console.log('大房间监管者:', gameData.module2.largeGuard);
+                
+                // 严格判断条件：人数达标且都选择了监管者
+                isComplete = 
+                    gameData.module2.smallRoom.length === 3 &&  // 小房间必须3人
+                    gameData.module2.largeRoom.length === 7 &&  // 大房间必须7人
+                    gameData.module2.smallGuard !== null &&     // 小房间必须选监管者
+                    gameData.module2.largeGuard !== null;       // 大房间必须选监管者
+                
+                const confirmBtn = document.getElementById('confirm-2');
+                confirmBtn.disabled = !isComplete;
+                
+                // 显示具体提示信息
+                if (!isComplete) {
+                    if (gameData.module2.smallRoom.length !== 3) {
+                        showNotification('小房间需要3名玩家');
+                    } else if (gameData.module2.largeRoom.length !== 7) {
+                        showNotification('大房间需要7名玩家');
+                    } else if (gameData.module2.smallGuard === null) {
+                        showNotification('请为小房间选择监管者');
+                    } else if (gameData.module2.largeGuard === null) {
+                        showNotification('请为大房间选择监管者');
+                    }
+                }
+            } else if (module === 'module3') {
+                // 模块3判断逻辑（与模块2相同）
+                isComplete = 
+                    gameData.module3.smallRoom.length === 3 && 
+                    gameData.module3.largeRoom.length === 7 &&
+                    gameData.module3.smallGuard !== null &&
+                    gameData.module3.largeGuard !== null;
+                
+                const confirmBtn = document.getElementById('confirm-3');
+                confirmBtn.disabled = !isComplete;
+                
+                if (!isComplete) {
+                    if (gameData.module3.smallRoom.length !== 3) {
+                        showNotification('小房间需要3名玩家');
+                    } else if (gameData.module3.largeRoom.length !== 7) {
+                        showNotification('大房间需要7名玩家');
+                    } else if (gameData.module3.smallGuard === null) {
+                        showNotification('请为小房间选择监管者');
+                    } else if (gameData.module3.largeGuard === null) {
+                        showNotification('请为大房间选择监管者');
+                    }
+                }
+            } else if (module === 'module4') {
+                // 模块4判断逻辑（3个房间无人数限制）
+                const totalPlayers = 
+                    gameData.module4.room1.length + 
+                    gameData.module4.room2.length + 
+                    gameData.module4.room3.length;
+                
+                // 检查有人的房间是否都选了监管者
+                let guardsComplete = true;
+                if (gameData.module4.room1.length > 0 && gameData.module4.guard1 === null) {
+                    guardsComplete = false;
+                    showNotification('请为房间1选择监管者');
+                } else if (gameData.module4.room2.length > 0 && gameData.module4.guard2 === null) {
+                    guardsComplete = false;
+                    showNotification('请为房间2选择监管者');
+                } else if (gameData.module4.room3.length > 0 && gameData.module4.guard3 === null) {
+                    guardsComplete = false;
+                    showNotification('请为房间3选择监管者');
+                }
+                
+                // 总人数必须是10人（所有玩家都要分配房间）
+                if (totalPlayers !== 10) {
+                    isComplete = false;
+                    showNotification(`请分配所有10名玩家（当前${totalPlayers}人）`);
+                } else {
+                    isComplete = guardsComplete;
+                }
+                
+                const confirmBtn = document.getElementById('confirm-4');
+                confirmBtn.disabled = !isComplete;
+            }
+            
+            return isComplete; // 返回是否完成状态
+        }
+
+        // 确认模块2分配并计算结果
+        function confirmModule2() {
+            // 计算小房间结果
+            const smallRoomAddicts = gameData.module2.smallRoom.filter(
+                id => gameData.lycheeAddicts.includes(id) && id !== gameData.module2.smallGuard
+            );
+            gameData.module2.smallResult = smallRoomAddicts.length > 0;
+            
+            // 计算大房间结果
+            const largeRoomAddicts = gameData.module2.largeRoom.filter(
+                id => gameData.lycheeAddicts.includes(id) && id !== gameData.module2.largeGuard
+            );
+            gameData.module2.largeResult = largeRoomAddicts.length > 0;
+            
+            // 更新结果显示
+            const smallResultEl = document.getElementById('small-result-2');
+            const largeResultEl = document.getElementById('large-result-2');
+            
+            smallResultEl.textContent = gameData.module2.smallResult ? '荔枝被偷吃了' : '荔枝完好';
+            smallResultEl.className = `text-lg ${gameData.module2.smallResult ? 'text-primary font-bold' : 'text-dark'}`;
+            
+            largeResultEl.textContent = gameData.module2.largeResult ? '荔枝被偷吃了' : '荔枝完好';
+            largeResultEl.className = `text-lg ${gameData.module2.largeResult ? 'text-primary font-bold' : 'text-dark'}`;
+            
+            // 显示被监管者
+            const smallGuardPlayer = gameData.players.find(p => p.id === gameData.module2.smallGuard);
+            const largeGuardPlayer = gameData.players.find(p => p.id === gameData.module2.largeGuard);
+            
+            document.getElementById('small-guard-2').textContent = smallGuardPlayer.name;
+            document.getElementById('large-guard-2').textContent = largeGuardPlayer.name;
+            
+            // 显示小房间成员列表
+            const smallMembersContainer = document.getElementById('small-room-members-2');
+            smallMembersContainer.innerHTML = '';
+            gameData.module2.smallRoom.forEach(playerId => {
+                const player = gameData.players.find(p => p.id === playerId);
+                const memberTag = document.createElement('span');
+                // 给被监管者添加特殊样式
+                memberTag.className = `px-2 py-1 rounded ${playerId === gameData.module2.smallGuard ? 'bg-primary/10 text-primary' : 'bg-gray-100'}`;
+                memberTag.textContent = player.name;
+                smallMembersContainer.appendChild(memberTag);
+            });
+            
+            // 显示大房间成员列表
+            const largeMembersContainer = document.getElementById('large-room-members-2');
+            largeMembersContainer.innerHTML = '';
+            gameData.module2.largeRoom.forEach(playerId => {
+                const player = gameData.players.find(p => p.id === playerId);
+                const memberTag = document.createElement('span');
+                // 给被监管者添加特殊样式
+                memberTag.className = `px-2 py-1 rounded ${playerId === gameData.module2.largeGuard ? 'bg-primary/10 text-primary' : 'bg-gray-100'}`;
+                memberTag.textContent = player.name;
+                largeMembersContainer.appendChild(memberTag);
+            });
+            
+            // 隐藏配置区域，显示结果
+            document.querySelector('#module-2 > div:first-child').classList.add('hidden');
+            document.getElementById('result-2').classList.remove('hidden');
+        }
+
+        // 初始化模块3
+        function initModule3() {
+            // 重置模块3数据
+            gameData.module3 = {
+                smallRoom: [],
+                largeRoom: [],
+                smallGuard: null,
+                largeGuard: null,
+                smallResult: null,
+                largeResult: null
+            };
+            
+            // 显示玩家列表
+            const playersContainer = document.getElementById('players-module-3');
+            playersContainer.innerHTML = '';
+            
+            gameData.players.forEach(player => {
+                const playerEl = createDraggablePlayer(player);
+                playersContainer.appendChild(playerEl);
+            });
+            
+            // 清空房间
+            document.querySelector('#small-room-3 .room-players').innerHTML = '';
+            document.querySelector('#large-room-3 .room-players').innerHTML = '';
+            
+            // 重置计数
+            document.getElementById('small-count-3').textContent = '0/3';
+            document.getElementById('large-count-3').textContent = '0/7';
+            
+            // 隐藏监管选择区域
+            document.querySelectorAll('#module-3 .hidden').forEach(el => {
+                el.classList.add('hidden');
+            });
+            
+            // 隐藏结果，显示配置区域
+            document.getElementById('result-3').classList.add('hidden');
+            document.querySelector('#module-3 > div:first-child').classList.remove('hidden');
+            
+            // 禁用确认按钮
+            document.getElementById('confirm-3').disabled = true;
+            
+            // 显示上一轮结果
+            document.getElementById('prev-small-result').textContent = gameData.module2.smallResult ? '荔枝被偷吃了' : '荔枝完好';
+            document.getElementById('prev-large-result').textContent = gameData.module2.largeResult ? '荔枝被偷吃了' : '荔枝完好';
+            
+            const smallGuardPlayer = gameData.players.find(p => p.id === gameData.module2.smallGuard);
+            const largeGuardPlayer = gameData.players.find(p => p.id === gameData.module2.largeGuard);
+            
+            document.getElementById('prev-small-guard').textContent = smallGuardPlayer.name;
+            document.getElementById('prev-large-guard').textContent = largeGuardPlayer.name;
+            
+            // 显示第一轮小房间成员
+            const prevSmallMembers = document.getElementById('prev-small-members');
+            prevSmallMembers.innerHTML = '';
+            gameData.module2.smallRoom.forEach(playerId => {
+                const player = gameData.players.find(p => p.id === playerId);
+                const tag = document.createElement('span');
+                tag.className = `px-2 py-0.5 rounded text-xs ${playerId === gameData.module2.smallGuard ? 'bg-primary/10 text-primary' : 'bg-gray-100'}`;
+                tag.textContent = player.name;
+                prevSmallMembers.appendChild(tag);
+            });
+            
+            // 显示第一轮大房间成员
+            const prevLargeMembers = document.getElementById('prev-large-members');
+            prevLargeMembers.innerHTML = '';
+            gameData.module2.largeRoom.forEach(playerId => {
+                const player = gameData.players.find(p => p.id === playerId);
+                const tag = document.createElement('span');
+                tag.className = `px-2 py-0.5 rounded text-xs ${playerId === gameData.module2.largeGuard ? 'bg-primary/10 text-primary' : 'bg-gray-100'}`;
+                tag.textContent = player.name;
+                prevLargeMembers.appendChild(tag);
+            });
+            
+            // 设置房间拖放事件
+            setupRoomDropZone('small-room-3', 3, 'small-count-3', 'module3', 'smallRoom');
+            setupRoomDropZone('large-room-3', 7, 'large-count-3', 'module3', 'largeRoom');
+        }
+
+        // 模块3随机分配函数
+        function randomAssignModule3() {
+            // 清空现有分配
+            gameData.module3.smallRoom = [];
+            gameData.module3.largeRoom = [];
+            gameData.module3.smallGuard = null;
+            gameData.module3.largeGuard = null;
+            
+            // 清空房间显示
+            document.querySelector('#small-room-3 .room-players').innerHTML = '';
+            document.querySelector('#large-room-3 .room-players').innerHTML = '';
+            document.getElementById('players-module-3').innerHTML = '';
+            
+            // 重新生成所有玩家
+            gameData.players.forEach(player => {
+                const playerEl = createDraggablePlayer(player);
+                document.getElementById('players-module-3').appendChild(playerEl);
+            });
+            
+            // 随机打乱玩家顺序
+            const shuffledPlayers = [...gameData.players].sort(() => 0.5 - Math.random());
+            
+            // 分配3人到小房间，7人到大房间
+            const smallRoomPlayers = shuffledPlayers.slice(0, 3);
+            const largeRoomPlayers = shuffledPlayers.slice(3, 10);
+            
+            // 添加到小房间
+            smallRoomPlayers.forEach(player => {
+                gameData.module3.smallRoom.push(player.id);
+            });
+            
+            // 添加到大房间
+            largeRoomPlayers.forEach(player => {
+                gameData.module3.largeRoom.push(player.id);
+            });
+            
+            // 自动选择第一个玩家作为监管者
+            if (smallRoomPlayers.length > 0) {
+                gameData.module3.smallGuard = smallRoomPlayers[0].id;
+            }
+            if (largeRoomPlayers.length > 0) {
+                gameData.module3.largeGuard = largeRoomPlayers[0].id;
+            }
+            
+            // 更新显示
+            updateRoomCount('module3', 'smallRoom', 'small-count-3');
+            updateRoomCount('module3', 'largeRoom', 'large-count-3');
+            
+            const smallContainer = document.querySelector('#small-room-3 .room-players');
+            const largeContainer = document.querySelector('#large-room-3 .room-players');
+            
+            renderRoomPlayers('module3', 'smallRoom', smallContainer);
+            renderRoomPlayers('module3', 'largeRoom', largeContainer);
+            
+            // 检查是否完成
+            checkRoomComplete('module3');
+        }
+
+        // 确认模块3分配并计算结果
+        function confirmModule3() {
+            // 计算小房间结果
+            const smallRoomAddicts = gameData.module3.smallRoom.filter(
+                id => gameData.lycheeAddicts.includes(id) && id !== gameData.module3.smallGuard
+            );
+            gameData.module3.smallResult = smallRoomAddicts.length > 0;
+            
+            // 计算大房间结果
+            const largeRoomAddicts = gameData.module3.largeRoom.filter(
+                id => gameData.lycheeAddicts.includes(id) && id !== gameData.module3.largeGuard
+            );
+            gameData.module3.largeResult = largeRoomAddicts.length > 0;
+            
+            // 更新结果显示
+            const smallResultEl = document.getElementById('small-result-3');
+            const largeResultEl = document.getElementById('large-result-3');
+            
+            smallResultEl.textContent = gameData.module3.smallResult ? '荔枝被偷吃了' : '荔枝完好';
+            smallResultEl.className = `text-lg ${gameData.module3.smallResult ? 'text-primary font-bold' : 'text-dark'}`;
+            
+            largeResultEl.textContent = gameData.module3.largeResult ? '荔枝被偷吃了' : '荔枝完好';
+            largeResultEl.className = `text-lg ${gameData.module3.largeResult ? 'text-primary font-bold' : 'text-dark'}`;
+            
+            // 显示被监管者
+            const smallGuardPlayer = gameData.players.find(p => p.id === gameData.module3.smallGuard);
+            const largeGuardPlayer = gameData.players.find(p => p.id === gameData.module3.largeGuard);
+            
+            document.getElementById('small-guard-3').textContent = smallGuardPlayer.name;
+            document.getElementById('large-guard-3').textContent = largeGuardPlayer.name;
+            
+            // 显示第二轮小房间成员
+            const smallMembersContainer = document.getElementById('small-room-members-3');
+            smallMembersContainer.innerHTML = '';
+            gameData.module3.smallRoom.forEach(playerId => {
+                const player = gameData.players.find(p => p.id === playerId);
+                const memberTag = document.createElement('span');
+                memberTag.className = `px-2 py-1 rounded ${playerId === gameData.module3.smallGuard ? 'bg-primary/10 text-primary' : 'bg-gray-100'}`;
+                memberTag.textContent = player.name;
+                smallMembersContainer.appendChild(memberTag);
+            });
+            
+            // 显示第二轮大房间成员
+            const largeMembersContainer = document.getElementById('large-room-members-3');
+            largeMembersContainer.innerHTML = '';
+            gameData.module3.largeRoom.forEach(playerId => {
+                const player = gameData.players.find(p => p.id === playerId);
+                const memberTag = document.createElement('span');
+                memberTag.className = `px-2 py-1 rounded ${playerId === gameData.module3.largeGuard ? 'bg-primary/10 text-primary' : 'bg-gray-100'}`;
+                memberTag.textContent = player.name;
+                largeMembersContainer.appendChild(memberTag);
+            });
+            
+            // 隐藏配置区域，显示结果
+            document.querySelector('#module-3 > div:first-child').classList.add('hidden');
+            document.getElementById('result-3').classList.remove('hidden');
+        }
+
+        // 初始化模块4
+        function initModule4() {
+            // 重置模块4数据
+            gameData.module4 = {
+                room1: [],
+                room2: [],
+                room3: [],
+                guard1: null,
+                guard2: null,
+                guard3: null,
+                result1: null,
+                result2: null,
+                result3: null
+            };
+            
+            // 显示玩家列表
+            const playersContainer = document.getElementById('players-module-4');
+            playersContainer.innerHTML = '';
+            
+            gameData.players.forEach(player => {
+                const playerEl = createDraggablePlayer(player);
+                playersContainer.appendChild(playerEl);
+            });
+            
+            // 清空房间
+            document.querySelector('#room-1-4 .room-players').innerHTML = '';
+            document.querySelector('#room-2-4 .room-players').innerHTML = '';
+            document.querySelector('#room-3-4 .room-players').innerHTML = '';
+            
+            // 隐藏监管选择区域
+            document.querySelectorAll('#module-4 .hidden').forEach(el => {
+                el.classList.add('hidden');
+            });
+            
+            // 隐藏结果，显示配置区域
+            document.getElementById('result-4').classList.add('hidden');
+            document.querySelector('#module-4 > div:first-child').classList.remove('hidden');
+            
+            // 禁用确认按钮
+            document.getElementById('confirm-4').disabled = true;
+            
+            // 显示前两轮结果
+            document.getElementById('prev1-small-result').textContent = gameData.module2.smallResult ? '荔枝被偷吃' : '荔枝完好';
+            document.getElementById('prev1-large-result').textContent = gameData.module2.largeResult ? '荔枝被偷吃' : '荔枝完好';
+            document.getElementById('prev2-small-result').textContent = gameData.module3.smallResult ? '荔枝被偷吃' : '荔枝完好';
+            document.getElementById('prev2-large-result').textContent = gameData.module3.largeResult ? '荔枝被偷吃' : '荔枝完好';
+            
+            // 显示第一轮成员列表
+            const prev1SmallMembers = document.getElementById('prev1-small-members');
+            prev1SmallMembers.innerHTML = '';
+            gameData.module2.smallRoom.forEach(playerId => {
+                const player = gameData.players.find(p => p.id === playerId);
+                const tag = document.createElement('span');
+                tag.className = `px-2 py-0.5 rounded text-xs ${playerId === gameData.module2.smallGuard ? 'bg-primary/10 text-primary' : 'bg-gray-100'}`;
+                tag.textContent = player.name;
+                prev1SmallMembers.appendChild(tag);
+            });
+            
+            const prev1LargeMembers = document.getElementById('prev1-large-members');
+            prev1LargeMembers.innerHTML = '';
+            gameData.module2.largeRoom.forEach(playerId => {
+                const player = gameData.players.find(p => p.id === playerId);
+                const tag = document.createElement('span');
+                tag.className = `px-2 py-0.5 rounded text-xs ${playerId === gameData.module2.largeGuard ? 'bg-primary/10 text-primary' : 'bg-gray-100'}`;
+                tag.textContent = player.name;
+                prev1LargeMembers.appendChild(tag);
+            });
+            
+            // 显示第二轮成员列表
+            const prev2SmallMembers = document.getElementById('prev2-small-members');
+            prev2SmallMembers.innerHTML = '';
+            gameData.module3.smallRoom.forEach(playerId => {
+                const player = gameData.players.find(p => p.id === playerId);
+                const tag = document.createElement('span');
+                tag.className = `px-2 py-0.5 rounded text-xs ${playerId === gameData.module3.smallGuard ? 'bg-primary/10 text-primary' : 'bg-gray-100'}`;
+                tag.textContent = player.name;
+                prev2SmallMembers.appendChild(tag);
+            });
+            
+            const prev2LargeMembers = document.getElementById('prev2-large-members');
+            prev2LargeMembers.innerHTML = '';
+            gameData.module3.largeRoom.forEach(playerId => {
+                const player = gameData.players.find(p => p.id === playerId);
+                const tag = document.createElement('span');
+                tag.className = `px-2 py-0.5 rounded text-xs ${playerId === gameData.module3.largeGuard ? 'bg-primary/10 text-primary' : 'bg-gray-100'}`;
+                tag.textContent = player.name;
+                prev2LargeMembers.appendChild(tag);
+            });
+            
+            // 设置房间拖放事件
+            setupRoomDropZone('room-1-4', Infinity, 'room-1-count-4', 'module4', 'room1');
+            setupRoomDropZone('room-2-4', Infinity, 'room-2-count-4', 'module4', 'room2');
+            setupRoomDropZone('room-3-4', Infinity, 'room-3-count-4', 'module4', 'room3');
+            
+            // 添加人数显示元素
+            document.querySelectorAll('#module-4 .room h3').forEach((h3, index) => {
+                // 避免重复添加
+                if (!document.getElementById(`room-${index+1}-count-4`)) {
+                    const countSpan = document.createElement('span');
+                    countSpan.id = `room-${index+1}-count-4`;
+                    countSpan.className = 'bg-light px-2 py-1 rounded-full text-sm ml-2';
+                    countSpan.textContent = '0人';
+                    h3.appendChild(countSpan);
+                }
+            });
+        }
+
+        // 模块4随机分配函数
+        function randomAssignModule4() {
+            // 清空现有分配
+            gameData.module4.room1 = [];
+            gameData.module4.room2 = [];
+            gameData.module4.room3 = [];
+            gameData.module4.guard1 = null;
+            gameData.module4.guard2 = null;
+            gameData.module4.guard3 = null;
+            
+            // 清空房间显示
+            document.querySelector('#room-1-4 .room-players').innerHTML = '';
+            document.querySelector('#room-2-4 .room-players').innerHTML = '';
+            document.querySelector('#room-3-4 .room-players').innerHTML = '';
+            document.getElementById('players-module-4').innerHTML = '';
+            
+            // 重新生成所有玩家
+            gameData.players.forEach(player => {
+                const playerEl = createDraggablePlayer(player);
+                document.getElementById('players-module-4').appendChild(playerEl);
+            });
+            
+            // 随机分配每个玩家到3个房间中的一个
+            gameData.players.forEach(player => {
+                const randomRoom = Math.floor(Math.random() * 3) + 1; // 1-3
+                gameData.module4[`room${randomRoom}`].push(player.id);
+            });
+            
+            // 为每个非空房间自动选择第一个玩家作为监管者
+            if (gameData.module4.room1.length > 0) {
+                gameData.module4.guard1 = gameData.module4.room1[0];
+            }
+            if (gameData.module4.room2.length > 0) {
+                gameData.module4.guard2 = gameData.module4.room2[0];
+            }
+            if (gameData.module4.room3.length > 0) {
+                gameData.module4.guard3 = gameData.module4.room3[0];
+            }
+            
+            // 更新显示
+            updateRoomCount('module4', 'room1', 'room-1-count-4');
+            updateRoomCount('module4', 'room2', 'room-2-count-4');
+            updateRoomCount('module4', 'room3', 'room-3-count-4');
+            
+            const room1Container = document.querySelector('#room-1-4 .room-players');
+            const room2Container = document.querySelector('#room-2-4 .room-players');
+            const room3Container = document.querySelector('#room-3-4 .room-players');
+            
+            renderRoomPlayers('module4', 'room1', room1Container);
+            renderRoomPlayers('module4', 'room2', room2Container);
+            renderRoomPlayers('module4', 'room3', room3Container);
+            
+            // 检查是否完成
+            checkRoomComplete('module4');
+        }
+
+        // 确认模块4分配并计算结果
+        function confirmModule4() {
+            // 计算房间1结果
+            const room1Addicts = gameData.module4.room1.filter(
+                id => gameData.lycheeAddicts.includes(id) && id !== gameData.module4.guard1
+            );
+            gameData.module4.result1 = room1Addicts.length > 0;
+            
+            // 计算房间2结果
+            const room2Addicts = gameData.module4.room2.filter(
+                id => gameData.lycheeAddicts.includes(id) && id !== gameData.module4.guard2
+            );
+            gameData.module4.result2 = room2Addicts.length > 0;
+            
+            // 计算房间3结果
+            const room3Addicts = gameData.module4.room3.filter(
+                id => gameData.lycheeAddicts.includes(id) && id !== gameData.module4.guard3
+            );
+            gameData.module4.result3 = room3Addicts.length > 0;
+            
+            // 更新结果显示
+            const result1El = document.getElementById('result-1-4');
+            const result2El = document.getElementById('result-2-4');
+            const result3El = document.getElementById('result-3-4');
+            
+            result1El.textContent = gameData.module4.result1 ? '荔枝被偷吃了' : '荔枝完好';
+            result1El.className = `text-lg ${gameData.module4.result1 ? 'text-primary font-bold' : 'text-dark'}`;
+            
+            result2El.textContent = gameData.module4.result2 ? '荔枝被偷吃了' : '荔枝完好';
+            result2El.className = `text-lg ${gameData.module4.result2 ? 'text-primary font-bold' : 'text-dark'}`;
+            
+            result3El.textContent = gameData.module4.result3 ? '荔枝被偷吃了' : '荔枝完好';
+            result3El.className = `text-lg ${gameData.module4.result3 ? 'text-primary font-bold' : 'text-dark'}`;
+            
+            // 显示被监管者
+            const guard1Player = gameData.players.find(p => p.id === gameData.module4.guard1) || { name: '无' };
+            const guard2Player = gameData.players.find(p => p.id === gameData.module4.guard2) || { name: '无' };
+            const guard3Player = gameData.players.find(p => p.id === gameData.module4.guard3) || { name: '无' };
+            
+            document.getElementById('guard-1-4').textContent = guard1Player.name;
+            document.getElementById('guard-2-4').textContent = guard2Player.name;
+            document.getElementById('guard-3-4').textContent = guard3Player.name;
+            
+            // 显示房间1成员列表
+            const room1Members = document.getElementById('room1-members-4');
+            room1Members.innerHTML = '';
+            gameData.module4.room1.forEach(playerId => {
+                const player = gameData.players.find(p => p.id === playerId);
+                const memberTag = document.createElement('span');
+                memberTag.className = `px-2 py-1 rounded ${playerId === gameData.module4.guard1 ? 'bg-primary/10 text-primary' : 'bg-gray-100'}`;
+                memberTag.textContent = player.name;
+                room1Members.appendChild(memberTag);
+            });
+            
+            // 显示房间2成员列表
+            const room2Members = document.getElementById('room2-members-4');
+            room2Members.innerHTML = '';
+            gameData.module4.room2.forEach(playerId => {
+                const player = gameData.players.find(p => p.id === playerId);
+                const memberTag = document.createElement('span');
+                memberTag.className = `px-2 py-1 rounded ${playerId === gameData.module4.guard2 ? 'bg-primary/10 text-primary' : 'bg-gray-100'}`;
+                memberTag.textContent = player.name;
+                room2Members.appendChild(memberTag);
+            });
+            
+            // 显示房间3成员列表
+            const room3Members = document.getElementById('room3-members-4');
+            room3Members.innerHTML = '';
+            gameData.module4.room3.forEach(playerId => {
+                const player = gameData.players.find(p => p.id === playerId);
+                const memberTag = document.createElement('span');
+                memberTag.className = `px-2 py-1 rounded ${playerId === gameData.module4.guard3 ? 'bg-primary/10 text-primary' : 'bg-gray-100'}`;
+                memberTag.textContent = player.name;
+                room3Members.appendChild(memberTag);
+            });
+            
+            // 隐藏配置区域，显示结果
+            document.querySelector('#module-4 > div:first-child').classList.add('hidden');
+            document.getElementById('result-4').classList.remove('hidden');
+        }
+
+        // 初始化模块5：最终投票（完整替换）
+function initModule5() {
+    // 重置投票数据（新逻辑）
+    gameData.voteCounts = {}; // 存储每个玩家的票数
+    gameData.players.forEach(player => {
+        gameData.voteCounts[player.id] = 0; // 初始票数为0
+    });
+
+    // 显示测试结果汇总（保持不变的部分）
+    const summaryContainer = document.getElementById('vote-results-summary');
+    summaryContainer.innerHTML = '';
+
+    // 第一轮结果
+    const round1SmallGuard = gameData.players.find(p => p.id === gameData.module2.smallGuard);
+    const round1LargeGuard = gameData.players.find(p => p.id === gameData.module2.largeGuard);
+    let round1SmallMembers = '';
+    gameData.module2.smallRoom.forEach(playerId => {
+        const player = gameData.players.find(p => p.id === playerId);
+        round1SmallMembers += `<span class="px-2 py-0.5 rounded text-xs mr-1 ${playerId === gameData.module2.smallGuard ? 'bg-primary/10 text-primary' : 'bg-gray-100'}">${player.name}</span>`;
+    });
+    let round1LargeMembers = '';
+    gameData.module2.largeRoom.forEach(playerId => {
+        const player = gameData.players.find(p => p.id === playerId);
+        round1LargeMembers += `<span class="px-2 py-0.5 rounded text-xs mr-1 ${playerId === gameData.module2.largeGuard ? 'bg-primary/10 text-primary' : 'bg-gray-100'}">${player.name}</span>`;
+    });
+    summaryContainer.innerHTML += `
+        <tr>
+            <td class="py-2 px-4 align-top">第一轮</td>
+            <td class="py-2 px-4 align-top">小房间</td>
+            <td class="py-2 px-4 align-top">${gameData.module2.smallResult ? '被偷吃' : '完好'}</td>
+            <td class="py-2 px-4 align-top">${round1SmallGuard.name}</td>
+            <td class="py-2 px-4">${round1SmallMembers}</td>
+        </tr>
+        <tr class="bg-gray-100">
+            <td class="py-2 px-4 align-top">第一轮</td>
+            <td class="py-2 px-4 align-top">大房间</td>
+            <td class="py-2 px-4 align-top">${gameData.module2.largeResult ? '被偷吃' : '完好'}</td>
+            <td class="py-2 px-4 align-top">${round1LargeGuard.name}</td>
+            <td class="py-2 px-4">${round1LargeMembers}</td>
+        </tr>
+    `;
+
+    // 第二轮结果
+    const round2SmallGuard = gameData.players.find(p => p.id === gameData.module3.smallGuard);
+    const round2LargeGuard = gameData.players.find(p => p.id === gameData.module3.largeGuard);
+    let round2SmallMembers = '';
+    gameData.module3.smallRoom.forEach(playerId => {
+        const player = gameData.players.find(p => p.id === playerId);
+        round2SmallMembers += `<span class="px-2 py-0.5 rounded text-xs mr-1 ${playerId === gameData.module3.smallGuard ? 'bg-primary/10 text-primary' : 'bg-gray-100'}">${player.name}</span>`;
+    });
+    let round2LargeMembers = '';
+    gameData.module3.largeRoom.forEach(playerId => {
+        const player = gameData.players.find(p => p.id === playerId);
+        round2LargeMembers += `<span class="px-2 py-0.5 rounded text-xs mr-1 ${playerId === gameData.module3.largeGuard ? 'bg-primary/10 text-primary' : 'bg-gray-100'}">${player.name}</span>`;
+    });
+    summaryContainer.innerHTML += `
+        <tr>
+            <td class="py-2 px-4 align-top">第二轮</td>
+            <td class="py-2 px-4 align-top">小房间</td>
+            <td class="py-2 px-4 align-top">${gameData.module3.smallResult ? '被偷吃' : '完好'}</td>
+            <td class="py-2 px-4 align-top">${round2SmallGuard.name}</td>
+            <td class="py-2 px-4">${round2SmallMembers}</td>
+        </tr>
+        <tr class="bg-gray-100">
+            <td class="py-2 px-4 align-top">第二轮</td>
+            <td class="py-2 px-4 align-top">大房间</td>
+            <td class="py-2 px-4 align-top">${gameData.module3.largeResult ? '被偷吃' : '完好'}</td>
+            <td class="py-2 px-4 align-top">${round2LargeGuard.name}</td>
+            <td class="py-2 px-4">${round2LargeMembers}</td>
+        </tr>
+    `;
+
+    // 第三轮结果
+    const round3Guard1 = gameData.players.find(p => p.id === gameData.module4.guard1) || { name: '无' };
+    const round3Guard2 = gameData.players.find(p => p.id === gameData.module4.guard2) || { name: '无' };
+    const round3Guard3 = gameData.players.find(p => p.id === gameData.module4.guard3) || { name: '无' };
+    let round3Room1Members = '';
+    gameData.module4.room1.forEach(playerId => {
+        const player = gameData.players.find(p => p.id === playerId);
+        round3Room1Members += `<span class="px-2 py-0.5 rounded text-xs mr-1 ${playerId === gameData.module4.guard1 ? 'bg-primary/10 text-primary' : 'bg-gray-100'}">${player.name}</span>`;
+    });
+    let round3Room2Members = '';
+    gameData.module4.room2.forEach(playerId => {
+        const player = gameData.players.find(p => p.id === playerId);
+        round3Room2Members += `<span class="px-2 py-0.5 rounded text-xs mr-1 ${playerId === gameData.module4.guard2 ? 'bg-primary/10 text-primary' : 'bg-gray-100'}">${player.name}</span>`;
+    });
+    let round3Room3Members = '';
+    gameData.module4.room3.forEach(playerId => {
+        const player = gameData.players.find(p => p.id === playerId);
+        round3Room3Members += `<span class="px-2 py-0.5 rounded text-xs mr-1 ${playerId === gameData.module4.guard3 ? 'bg-primary/10 text-primary' : 'bg-gray-100'}">${player.name}</span>`;
+    });
+    summaryContainer.innerHTML += `
+        <tr>
+            <td class="py-2 px-4 align-top">第三轮</td>
+            <td class="py-2 px-4 align-top">房间1</td>
+            <td class="py-2 px-4 align-top">${gameData.module4.result1 ? '被偷吃' : '完好'}</td>
+            <td class="py-2 px-4 align-top">${round3Guard1.name}</td>
+            <td class="py-2 px-4">${round3Room1Members}</td>
+        </tr>
+        <tr class="bg-gray-100">
+            <td class="py-2 px-4 align-top">第三轮</td>
+            <td class="py-2 px-4 align-top">房间2</td>
+            <td class="py-2 px-4 align-top">${gameData.module4.result2 ? '被偷吃' : '完好'}</td>
+            <td class="py-2 px-4 align-top">${round3Guard2.name}</td>
+            <td class="py-2 px-4">${round3Room2Members}</td>
+        </tr>
+        <tr>
+            <td class="py-2 px-4 align-top">第三轮</td>
+            <td class="py-2 px-4 align-top">房间3</td>
+            <td class="py-2 px-4 align-top">${gameData.module4.result3 ? '被偷吃' : '完好'}</td>
+            <td class="py-2 px-4 align-top">${round3Guard3.name}</td>
+            <td class="py-2 px-4">${round3Room3Members}</td>
+        </tr>
+    `;
+
+    // 关键修复：如果已有投票数据，则复用，否则初始化
+    if (!gameData.voteCounts || Object.keys(gameData.voteCounts).length === 0) {
+        gameData.voteCounts = {};
+        gameData.players.forEach(player => {
+            gameData.voteCounts[player.id] = 0;
+        });
+    }
+    
+    // 重新渲染投票控制器（确保使用最新数据）
+    renderVoteControls();
+}
+
+// 生成投票控制器（新函数）
+function renderVoteControls() {
+    const container = document.getElementById('voting-controls');
+    container.innerHTML = '';
+    
+    gameData.players.forEach(player => {
+        // 关键：使用gameData.voteCounts中存储的当前票数
+        const currentVotes = gameData.voteCounts[player.id] || 0;
+        
+        const controlEl = document.createElement('div');
+        controlEl.className = 'flex items-center justify-between bg-gray-50 p-3 rounded-lg';
+        controlEl.innerHTML = `
+            <div class="font-medium">${player.name}</div>
+            <div class="flex items-center gap-2">
+                <button class="decrease-vote bg-gray-200 hover:bg-gray-300 w-8 h-8 rounded-full flex items-center justify-center" data-player-id="${player.id}">
+                    <i class="fa fa-minus"></i>
+                </button>
+                <!-- 关键：输入框值设置为当前存储的票数 -->
+                <input type="number" min="0" max="10" value="${currentVotes}" class="vote-input w-12 h-8 text-center border rounded" data-player-id="${player.id}">
+                <button class="increase-vote bg-gray-200 hover:bg-gray-300 w-8 h-8 rounded-full flex items-center justify-center" data-player-id="${player.id}">
+                    <i class="fa fa-plus"></i>
+                </button>
+            </div>
+        `;
+        container.appendChild(controlEl);
+    });
+    
+    attachVoteEvents();
+    updateVoteStats(); // 重新计算状态
+}
+
+// 添加票数调整事件（新函数）
+function attachVoteEvents() {
+    // 减票按钮
+    document.querySelectorAll('.decrease-vote').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const playerId = parseInt(e.target.closest('[data-player-id]').dataset.playerId);
+            if (gameData.voteCounts[playerId] > 0) {
+                gameData.voteCounts[playerId]--;
+                updateVoteInput(playerId);
+                updateVoteStats();
+            }
+        });
+    });
+    
+    // 加票按钮
+    document.querySelectorAll('.increase-vote').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const playerId = parseInt(e.target.closest('[data-player-id]').dataset.playerId);
+            const totalVotes = getTotalVotes();
+            if (gameData.voteCounts[playerId] < 10 && totalVotes < 30) {
+                gameData.voteCounts[playerId]++;
+                updateVoteInput(playerId);
+                updateVoteStats();
+            }
+        });
+    });
+    
+    // 输入框直接修改
+    document.querySelectorAll('.vote-input').forEach(input => {
+        input.addEventListener('change', (e) => {
+            const playerId = parseInt(e.target.dataset.playerId);
+            let value = parseInt(e.target.value) || 0;
+            // 限制范围0-10
+            value = Math.max(0, Math.min(10, value));
+            // 检查总票数是否超过30
+            const totalVotes = getTotalVotes() - gameData.voteCounts[playerId] + value;
+            if (totalVotes <= 30) {
+                gameData.voteCounts[playerId] = value;
+            } else {
+                // 超过时自动调整为最大可能值
+                gameData.voteCounts[playerId] = 30 - (getTotalVotes() - gameData.voteCounts[playerId]);
+            }
+            updateVoteInput(playerId);
+            updateVoteStats();
+        });
+    });
+}
+
+// 更新单个玩家的票数输入框（新函数）
+function updateVoteInput(playerId) {
+    const input = document.querySelector(`.vote-input[data-player-id="${playerId}"]`);
+    input.value = gameData.voteCounts[playerId];
+}
+
+// 计算总票数（新函数）
+function getTotalVotes() {
+    // 遍历所有玩家的票数并求和
+    return Object.values(gameData.voteCounts).reduce((sum, count) => sum + count, 0);
+}
+
+// 更新票数统计和提交按钮状态（新函数）
+function updateVoteStats() {
+    const totalVotes = getTotalVotes();
+     console.log('当前总票数:', totalVotes); // 调试用
+    
+    document.getElementById('used-votes').textContent = totalVotes;
+    
+    const submitBtn = document.getElementById('submit-vote');
+    console.log('提交按钮状态:', totalVotes === 30 ? '可用' : '禁用'); // 调试用
+    submitBtn.disabled = totalVotes !== 30;
+    
+    // 高亮显示总票数
+    const usedVotesEl = document.getElementById('used-votes');
+    if (totalVotes > 30) {
+        usedVotesEl.className = 'text-primary font-bold';
+    } else {
+        usedVotesEl.className = '';
+    }
+}
+
+
+
+        // 更新投票界面
+        function updateVotingInterface() {
+            // 更新当前投票者显示
+            const currentPlayer = gameData.players[gameData.currentVoter];
+            document.getElementById('voting-player').textContent = `当前投票: ${currentPlayer.name}`;
+            
+            // 清空选中的投票
+            const selectedVotesContainer = document.getElementById('selected-votes');
+            selectedVotesContainer.innerHTML = '';
+            
+            // 显示已选的投票
+            gameData.votes[gameData.currentVoter].forEach(playerId => {
+                const player = gameData.players.find(p => p.id === playerId);
+                const voteTag = document.createElement('div');
+                voteTag.className = 'bg-primary/10 text-primary px-3 py-1 rounded-full text-sm flex items-center';
+                voteTag.dataset.playerId = playerId;
+                voteTag.innerHTML = `
+                    <span>${player.name}</span>
+                    <button class="remove-vote ml-1 text-primary hover:text-primary/70">
+                        <i class="fa fa-times-circle"></i>
+                    </button>
+                `;
+                
+                // 移除投票事件
+                voteTag.querySelector('.remove-vote').addEventListener('click', () => {
+                    gameData.votes[gameData.currentVoter] = gameData.votes[gameData.currentVoter].filter(id => id !== playerId);
+                    updateVotingInterface();
+                });
+                
+                selectedVotesContainer.appendChild(voteTag);
+            });
+            
+            // 更新提交按钮状态
+            document.getElementById('submit-vote').disabled = gameData.votes[gameData.currentVoter].length < 3;
+            
+            // 显示可投票的玩家
+            const votingPlayersList = document.getElementById('voting-players-list');
+            votingPlayersList.innerHTML = '';
+            
+            gameData.players.forEach(player => {
+                // 排除自己
+                if (player.id === currentPlayer.id) return;
+                
+                const isSelected = gameData.votes[gameData.currentVoter].includes(player.id);
+                
+                const playerEl = document.createElement('button');
+                playerEl.className = `player-vote-option p-2 border rounded-lg text-center scale-hover ${isSelected ? 'bg-primary text-white border-primary' : 'bg-white border-gray-300'}`;
+                playerEl.disabled = isSelected || gameData.votes[gameData.currentVoter].length >= 3;
+                playerEl.dataset.playerId = player.id;
+                playerEl.textContent = player.name;
+                
+                playerEl.addEventListener('click', () => {
+                    if (!isSelected && gameData.votes[gameData.currentVoter].length < 3) {
+                        gameData.votes[gameData.currentVoter].push(player.id);
+                        updateVotingInterface();
+                    }
+                });
+                
+                votingPlayersList.appendChild(playerEl);
+            });
+        }
+
+        // 提交投票（完整替换）
+function submitVote() {
+    const totalVotes = getTotalVotes();
+    if (totalVotes !== 30) return;
+    
+    // 直接使用voteCounts作为最终投票结果
+    calculateVotingResults();
+    showModule(6);
+}
+
+// 完整的计算投票结果函数
+function calculateVotingResults() {
+    // 确保投票结果容器存在
+    const topVoteContainer = document.getElementById('top-vote-results');
+    if (!topVoteContainer) {
+        console.error('投票结果元素未找到');
+        return;
+    }
+    
+    // 清空现有内容
+    topVoteContainer.innerHTML = '';
+
+    // 1. 直接使用gameData.voteCounts作为票数统计
+    const voteCounts = gameData.voteCounts;
+    
+    // 2. 按票数排序所有玩家
+    const sortedPlayers = [...gameData.players]
+        .sort((a, b) => voteCounts[b.id] - voteCounts[a.id]);
+    
+    // 3. 获取前三名（包括并列）并判定胜负 - 修复版本
+    let topPlayers = [];
+    
+    if (sortedPlayers.length >= 3) {
+        const thirdPlaceVotes = voteCounts[sortedPlayers[2].id];
+        // 包含所有票数不低于第三名的玩家（处理并列情况）
+        topPlayers = sortedPlayers.filter(player => 
+            voteCounts[player.id] >= thirdPlaceVotes
+        );
+    } else {
+        // 玩家不足3人的情况（理论上不会发生）
+        topPlayers = sortedPlayers;
+    }
+
+    const topPlayerIds = topPlayers.map(p => p.id);
+    const allAddictsCaught = gameData.lycheeAddicts.every(addictId => 
+        topPlayerIds.includes(addictId)
+    );
+    const ordinaryWin = allAddictsCaught;
+    
+    console.log('前三名玩家:', topPlayers.map(p => p.name));
+    console.log('荔枝瘾成员:', gameData.lycheeAddicts);
+    console.log('是否全部被抓:', allAddictsCaught);
+    
+    // 4. 显示获胜方
+    const winnerBanner = document.getElementById('winner-banner');
+    if (winnerBanner) {
+        winnerBanner.textContent = ordinaryWin ? '普通成员阵营胜利！' : '荔枝瘾阵营胜利！';
+        winnerBanner.className = `text-3xl font-bold mb-4 py-4 rounded-lg ${ordinaryWin ? 'bg-dark text-white' : 'bg-primary text-white'}`;
+    }
+    
+    // 5. 显示前三名投票结果
+    const resultsContainer = document.getElementById('top-vote-results');
+    if (resultsContainer) {
+        resultsContainer.innerHTML = '';
+        topPlayers.forEach((player, index) => {
+            const resultItem = document.createElement('div');
+            resultItem.className = `flex items-center justify-between w-full max-w-md p-3 rounded-lg mb-2 ${
+                index === 0 ? 'bg-yellow-100 border-yellow-300' : 
+                index === 1 ? 'bg-gray-100 border-gray-300' : 
+                'bg-orange-100 border-orange-300'
+            } border`;
+            resultItem.innerHTML = `
+                <div class="flex items-center">
+                    <span class="font-bold mr-3 text-xl ${
+                        index === 0 ? 'text-yellow-600' : 
+                        index === 1 ? 'text-gray-600' : 
+                        'text-orange-600'
+                    }">${index + 1}</span>
+                    <span>${player.name}</span>
+                </div>
+                <div class="flex items-center">
+                    <i class="fa fa-vote-yea text-primary mr-1"></i>
+                    <span class="font-bold">${voteCounts[player.id]}票</span>
+                </div>
+            `;
+            resultsContainer.appendChild(resultItem);
+        });
+    }
+    
+    // 6. 显示所有玩家的票数详情
+    const fullResultsContainer = document.getElementById('full-vote-results');
+    if (fullResultsContainer) {
+        fullResultsContainer.innerHTML = '';
+        
+        gameData.players.forEach(player => {
+            const voteItem = document.createElement('div');
+            voteItem.className = 'flex justify-between p-2 border-b last:border-0';
+            voteItem.innerHTML = `
+                <span>${player.name}</span>
+                <span class="font-medium">${voteCounts[player.id]}票</span>
+            `;
+            fullResultsContainer.appendChild(voteItem);
+        });
+    }
+    
+    // 7. 显示真实身份
+    const identitiesContainer = document.querySelector('#module-6 .grid');
+    if (identitiesContainer) {
+        identitiesContainer.innerHTML = '';
+        gameData.players.forEach(player => {
+            const identityItem = document.createElement('div');
+            identityItem.className = `text-center p-3 rounded-lg border ${
+                player.isLycheeAddict ? 'bg-primary/10 border-primary' : 'bg-dark/10 border-dark'
+            }`;
+            identityItem.innerHTML = `
+                <div class="font-medium mb-1">${player.name}</div>
+                <div class="text-sm ${player.isLycheeAddict ? 'text-primary' : 'text-dark'}">
+                    ${player.isLycheeAddict ? '荔枝瘾成员' : '普通成员'}
+                </div>
+            `;
+            identitiesContainer.appendChild(identityItem);
+        });
+    }
+}
+
+
+
+
+
+// 完整的显示模块函数
+function showModule(moduleNumber) {
+    // 隐藏所有模块
+    document.querySelectorAll('section[id^="module-"]').forEach(section => {
+        section.classList.add('hidden');
+    });
+    
+    // 显示指定模块
+    const targetModule = document.getElementById(`module-${moduleNumber}`);
+    targetModule.classList.remove('hidden');
+    
+    // 更新游戏状态
+    gameData.currentPhase = moduleNumber;
+    updateGameStatus();
+}
+
+        // 更新游戏状态显示
+        function updateGameStatus() {
+            const phaseNames = [
+                '基础设定',
+                '第一轮测试',
+                '第二轮测试',
+                '第三轮测试',
+                '最终投票',
+                '游戏结果'
+            ];
+            
+            document.getElementById('current-phase').textContent = `${phaseNames[gameData.currentPhase - 1]}`;
+        }
+
+        // 显示通知
+        function showNotification(message) {
+            // 检查是否已有通知
+            let notification = document.querySelector('.game-notification');
+            if (notification) {
+                notification.remove();
+            }
+            
+            // 创建新通知
+            notification = document.createElement('div');
+            notification.className = 'game-notification fixed bottom-4 right-4 bg-accent text-white px-4 py-2 rounded-lg shadow-lg z-50 transform transition-all duration-300 translate-y-10 opacity-0';
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            
+            // 显示通知
+            setTimeout(() => {
+                notification.classList.remove('translate-y-10', 'opacity-0');
+            }, 10);
+            
+            // 3秒后隐藏
+            setTimeout(() => {
+                notification.classList.add('translate-y-10', 'opacity-0');
+                setTimeout(() => {
+                    notification.remove();
+                }, 300);
+            }, 3000);
+        }
+
+// 补充投票完成检查函数
+function isVotingComplete() {
+    // 检查是否所有玩家都完成了投票
+    // 根据你的投票逻辑实现，例如检查总票数是否达到30
+    let totalVotes = 0;
+    Object.values(gameData.voteDetails).forEach(vote => {
+        totalVotes += vote.count;
+    });
+    return totalVotes === 30;
+}
+
+// 确保renderVotingControls函数正确生成元素
+function renderVotingControls() {
+    const container = document.getElementById('voting-controls');
+    if (!container) return; // 检查容器是否存在
+    
+    container.innerHTML = ''; // 清空容器
+    
+    // 重新生成投票控件...
+    gameData.players.forEach(player => {
+        // 生成每个玩家的投票控件
+        const control = document.createElement('div');
+        control.className = 'flex items-center justify-between p-2 border rounded-lg';
+        control.innerHTML = `
+            <span>${player.name}</span>
+            <div class="flex items-center gap-2">
+                <button class="vote-minus bg-gray-200 p-1 rounded" data-id="${player.id}">-</button>
+                <span class="vote-count" data-id="${player.id}">0</span>
+                <button class="vote-plus bg-gray-200 p-1 rounded" data-id="${player.id}">+</button>
+            </div>
+        `;
+        container.appendChild(control);
+    });
+    
+    // 重新绑定投票按钮事件
+    bindVoteButtons();
+}
+
+// 显示模块6并刷新结果
+function showModule6() {
+    // 隐藏所有模块，显示模块6
+    document.querySelectorAll('section[id^="module-"]').forEach(section => {
+        section.classList.add('hidden');
+    });
+    document.getElementById('module-6').classList.remove('hidden');
+    
+    // 关键：每次显示模块6时重新计算并渲染结果
+    calculateVotingResults();
+    
+    // 更新游戏状态
+    gameData.currentPhase = 6;
+    updateGameStatus();
+}
+
+// 隐藏所有模块
+function hideAllModules() {
+    document.querySelectorAll('section[id^="module-"]').forEach(section => {
+        section.classList.add('hidden');
+    });
+}
+
+    </script>
+</body>
+</html>
