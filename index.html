@@ -1,0 +1,2237 @@
+<!DOCTYPE html>
+<!--
+  大唐推理游戏主界面
+  - 模块化审查流程
+  - 身份确认与特殊能力次数自定义入口
+-->
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>荔枝谜案 - 大唐推理游戏</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/v4-shims.min.css"
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    />
+    <!-- 优化字体引入 -->
+    <link
+      href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=ZCOOL+QingKe+HuangYou&family=Noto+Serif+SC:wght@400;700&family=Noto+Sans+SC:wght@300;400;500;700&display=swap"
+      rel="stylesheet"
+    />
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              primary: "#8B0000", // 深红色，类似荔枝色
+              secondary: "#F5F5DC", // 羊皮纸色
+              accent: "#3D2B1F", // 深棕色
+              light: "#D4AF37", // 金色
+              dark: "#2F1B0C", // 深褐色
+            },
+            fontFamily: {
+              tang: ["Ma Shan Zheng", "Noto Serif SC", "serif"],
+              classic: ["Noto Sans SC", "ZCOOL QingKe HuangYou", "sans-serif"],
+            },
+            boxShadow: {
+              card: "0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.2)",
+              "card-hover":
+                "0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.2)",
+            },
+          },
+        },
+      };
+    </script>
+    <link rel="stylesheet" href="css/style.css" />
+  </head>
+  <body class="bg-secondary min-h-screen text-accent ancient-bg font-classic">
+    <!-- 顶部导航栏 -->
+    <!-- 替换原有的顶部导航栏代码 -->
+    <header class="bg-primary text-white shadow-md">
+      <div class="container mx-auto px-4 py-3">
+        <div
+          class="flex flex-col md:flex-row justify-between items-center space-y-2 md:space-y-0"
+        >
+          <!-- 左侧标题 -->
+          <div class="flex items-center space-x-2">
+            <i class="fa fa-pagelines text-2xl"></i>
+            <h1 class="text-xl md:text-2xl font-bold font-tang">荔枝谜案</h1>
+          </div>
+
+          <!-- 中央游戏说明按钮 -->
+          <button
+            id="help-btn"
+            class="bg-white text-primary hover:bg-secondary font-bold py-2 px-4 rounded-full shadow-md scale-hover flex items-center space-x-2 transition-all-300"
+          >
+            <span class="font-tang">游戏说明</span>
+          </button>
+
+          <!-- 右侧游戏状态（仅桌面端显示） -->
+          <div
+            id="game-status"
+            class="hidden md:flex items-center space-x-4 bg-white/10 rounded-lg px-3 py-1"
+          >
+            <span id="current-phase" class="text-white text-sm"
+              >游戏未开始</span
+            >
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- 主内容区 -->
+    <main class="container mx-auto px-4 py-6 md:py-10">
+      <!-- 游戏说明模态框 -->
+      <div
+        id="help-modal"
+        class="fixed inset-0 bg-black/70 flex items-center justify-center z-50 hidden"
+      >
+        <div
+          class="bg-secondary rounded-xl shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto p-6 m-4 tang-border"
+        >
+          <div class="flex justify-between items-center mb-4">
+            <h2 class="text-2xl font-bold text-primary font-tang">
+              大唐荔枝谜案 - 规则说明
+            </h2>
+            <button id="close-help" class="text-gray-500 hover:text-gray-700">
+              <i class="fa fa-times text-xl"></i>
+            </button>
+          </div>
+          <div class="space-y-4 text-gray-700 text-content">
+            <div class="bg-white/50 p-4 rounded-lg">
+              <h3 class="font-bold text-lg mb-2 text-accent font-tang">
+                背景故事
+              </h3>
+              <p id="help-story-line1" class="text-justify">
+                大唐天宝年间，长安城实行严格的宵禁制度。今夜，
+                <span id="help-story-total-span">10</span> 位来自西域的胡人使者携稀世贡品入宫朝觐。鸿胪寺设荔枝宴为诸位接风，这岭南快马送来的鲜荔，本是圣上钦赐的恩典...
+              </p>
+              <p id="help-story-line2" class="text-justify mt-2">
+                然而三更鼓响时，大半御赐荔枝竟不翼而飞！根据痕迹判断，盗荔者共有
+                <span id="help-story-addict-span">3</span> 名且仍潜伏在使者之中。能趁宵禁行动的只有这
+                <span id="help-story-total-span-2">10</span> 位使者，因而怀疑目标立即锁定于他们。
+              </p>
+            </div>
+            <div class="bg-white/50 p-4 rounded-lg">
+              <h3 class="font-bold text-lg mb-2 text-accent font-tang">
+                阵营设定
+              </h3>
+              <p>当前游戏共有 <span id="help-total-count">10</span> 名成员，阵营构成为：</p>
+              <ul class="list-disc pl-5 mt-1">
+                <li>
+                  <strong class="text-primary">「荔枝瘾成员阵营」</strong
+                  >：<span id="help-addict-count">3</span> 人，知晓同伴身份
+                </li>
+                <li>
+                  <strong class="text-dark">「普通成员阵营」</strong
+                  >：<span id="help-ordinary-count">6</span> 人，仅知晓自身身份
+                </li>
+                <li id="help-neutral-item">
+                  <strong class="text-amber-700">「中立阵营」</strong
+                  >：<span id="help-neutral-count">1</span> 人，拥有独立胜利目标
+                </li>
+              </ul>
+              <p class="mt-2">
+                「荔枝瘾」成员每个时辰会发作，若未被监管，会偷吃所在房间的荔枝。
+              </p>
+            </div>
+            <div class="bg-white/50 p-4 rounded-lg">
+              <h3 class="font-bold text-lg mb-2 text-accent font-tang">
+                游戏流程
+              </h3>
+              <ol class="list-decimal pl-5 space-y-2">
+                <li>
+                  <strong class="text-dark">第一轮审查</strong
+                  >：2个房间（大房间 <span id="help-large-limit">7</span> 人，小房间 <span id="help-small-limit">3</span> 人），各放1颗荔枝，每房间推选1名被监管者，此轮次由大理寺卿随机分配
+                </li>
+                <li>
+                  <strong class="text-dark">第二轮审查</strong
+                  >：2个房间（大房间 <span id="help-large-limit-2">7</span> 人，小房间 <span id="help-small-limit-2">3</span> 人），各放1颗荔枝，每房间推选1名被监管者
+                </li>
+                <li>
+                  <strong class="text-dark">第三轮审查</strong
+                  >：2个房间（大房间 <span id="help-large-limit-3">7</span> 人，小房间 <span id="help-small-limit-3">3</span> 人），各放1颗荔枝，每房间推选1名被监管者
+                </li>
+                <li>
+                  <strong class="text-dark">第四轮审查</strong
+                  >：3个房间，无人数限制，各放1颗荔枝，每房间推选1名被监管者
+                </li>
+                <li>
+                  <strong class="text-dark">最终投票</strong
+                  >：每人拥有 <span id="help-votes-per-person">3</span> 票，投给 <span id="help-votes-target-count">3</span> 名不同的怀疑对象
+                </li>
+              </ol>
+            </div>
+            <div class="bg-white/50 p-4 rounded-lg">
+              <h3 class="font-bold text-lg mb-2 text-accent font-tang">
+                荔枝状态判定
+              </h3>
+              <p>
+                房间内有未被监管的「荔枝瘾」→荔枝被偷吃；无「荔枝瘾」或「荔枝瘾」均被监管→荔枝保留
+              </p>
+            </div>
+            <div class="bg-white/50 p-4 rounded-lg">
+              <h3 class="font-bold text-lg mb-2 text-accent font-tang">
+                胜负判定
+              </h3>
+              <p>
+                所有进入前 <span id="help-victory-threshold">3</span> 名排名的使者（包括并列者）若包含所有荔枝瘾成员，则普通成员胜利；否则荔枝瘾成员胜利
+              </p>
+            </div>
+
+            <div class="bg-white/50 p-4 rounded-lg">
+              <h3 class="font-bold text-lg mb-2 text-accent font-tang">
+                特殊身份说明
+              </h3>
+
+              <h4 class="font-semibold mb-2 text-primary">普通阵营：</h4>
+              <ul class="list-disc pl-5 mb-4 space-y-2">
+                <li>
+                  <strong>沐恩天使</strong
+                  >：第二轮必须祝福一名使者，使其能力持续免疫封印，并根据身份触发持续强化效果：
+                  <ul class="list-disc pl-5 text-xs text-gray-700 space-y-1 mt-1">
+                    <li>金刚僧：额外揭示圣域抵御过的能力类型</li>
+                    <li>缄默：随机排除一个错误身份</li>
+                    <li>胡庭药巫：可得知被查验者的具体特殊身份</li>
+                    <li>易容术士：改为与其他房间的一名使者互换真实位置</li>
+                    <li>牧歌传讯者：额外获知上一轮骨哨虫王是否行动</li>
+                    <li>骨哨虫王：能力使用次数上限 +1</li>
+                    <li>憨巴郎：最终票数固定额外 +荔枝瘾人数</li>
+                  </ul>
+                </li>
+                <li>
+                  <strong>金刚僧</strong
+                  >：任选一轮施展「不动明王咒」，将一个房间化为圣域，
+                  本轮内该房间将免疫易容术士移动、骨哨虫王强制偷吃，并使其中的特殊身份不会被缄默封印（荔枝瘾能力次数会被浪费）。（使用次数上限：<span id="help-ability-limit-goldenMonk">1</span>次）
+                </li>
+                <li>
+                  <strong>胡庭药巫</strong
+                  >：查验某个使者是否为荔枝瘾（使用次数上限：<span id="help-ability-limit-medicineShaman">4</span>次）
+                </li>
+                <li>
+                  <strong>牧歌传讯者</strong
+                  >：查验某一轮所有房间的真实人数（使用次数上限：<span id="help-ability-limit-songMessenger">4</span>次）
+                </li>
+              </ul>
+
+              <h4 class="font-semibold mb-2 text-amber-600">中立阵营：</h4>
+              <ul class="list-disc pl-5 mb-4 space-y-2">
+                <li>
+                  <strong>憨巴郎</strong
+                  >：若在最终投票中以第一名被投出，则无视任何阵营胜负条件，立即单独胜利；若被缄默封印，则此能力无效。
+                </li>
+              </ul>
+
+              <h4 class="font-semibold mb-2 text-primary">荔枝瘾阵营：</h4>
+              <ul class="list-disc pl-5 mb-4 space-y-2">
+                <li>
+                  <strong>缄默</strong>：选择一名普通/中立使者，猜测其特殊身份，若正确则永久封印其特殊能力（使用次数上限：<span id="help-ability-limit-silentWhisper">随偷吃次数增加</span>，次数下轮生效）
+                </li>
+                <li>
+                  <strong>易容术士</strong>：移动到其他房间，改变真实成员分配，不受监管影响（使用次数上限：<span id="help-ability-limit-disguiseMaster">2</span>次）
+                </li>
+                <li>
+                  <strong>骨哨虫王</strong>：强制某个房间荔枝被偷吃（使用次数上限：<span id="help-ability-limit-boneWhistleKing">1</span>次）
+                </li>
+              </ul>
+
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 关押过渡界面 -->
+      <div
+        id="arrest-modal"
+        class="fixed inset-0 bg-black/70 flex items-center justify-center z-50 hidden"
+      >
+        <div
+          class="bg-secondary rounded-xl shadow-xl max-w-md w-full p-8 m-4 tang-border text-center"
+        >
+          <div class="mb-6">
+            <i class="fa fa-lock text-4xl text-primary mb-4"></i>
+            <h2 class="text-2xl font-bold text-primary font-tang mb-2">
+              ④【行动阶段】
+            </h2>
+            <div class="w-16 h-1 bg-primary mx-auto mb-4"></div>
+            <p class="text-gray-700">使者们已选定房间</p>
+            <p class="text-gray-700">请持有特殊身份的使者依次行使你们的能力...</p>
+          </div>
+
+          <button
+            id="confirm-arrest"
+            class="bg-primary hover:bg-primary/90 text-white font-bold py-3 px-8 rounded-full shadow-md scale-hover font-tang"
+          >
+            即将开始关押
+          </button>
+        </div>
+      </div>
+
+      <!-- 能力使用模态框 -->
+      <div
+        id="ability-modal"
+        class="fixed inset-0 bg-black/70 flex items-center justify-center z-50 hidden"
+      >
+        <div
+          class="bg-secondary rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 m-4 tang-border"
+        >
+          <div class="text-center mb-6">
+            <h2 class="text-2xl font-bold text-primary font-tang">
+              特殊能力使用
+            </h2>
+            <div class="w-16 h-1 bg-primary mx-auto mt-2"></div>
+          </div>
+
+          <!-- 能力使用者信息 -->
+          <div id="ability-user-info" class="bg-white/50 p-4 rounded-lg mb-6">
+            <!-- 将通过JS动态生成 -->
+          </div>
+
+          <!-- 当前局势信息 -->
+          <div
+            id="ability-context-info"
+            class="bg-white/40 p-4 rounded-lg mb-6 border border-primary/20 hidden"
+          >
+            <!-- 将通过JS动态生成 -->
+          </div>
+
+          <!-- 能力使用结果 -->
+          <div id="ability-result" class="hidden mt-6">
+            <div
+              class="bg-white p-4 rounded-lg border-2 border-primary text-center"
+            >
+              <h4 class="text-lg font-bold text-primary mb-2">使用能力结果</h4>
+              <div id="ability-result-narration" class="mb-3 hidden"></div>
+              <p id="ability-result-text" class="text-lg"></p>
+              <button
+                id="confirm-result"
+                class="bg-primary hover:bg-primary/90 text-white font-bold py-2 px-6 rounded-full shadow-md scale-hover mt-4"
+              >
+                确认
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 模块0：基础设定模块 -->
+      <section id="module-0" class="transition-all duration-500">
+        <div class="bg-white/80 rounded-xl shadow-card p-6 mb-8 tang-border">
+          <h2
+            class="text-2xl font-bold mb-6 text-primary flex items-center font-tang"
+          >
+            <i class="fa fa-cog mr-2"></i>身份确认
+          </h2>
+
+          <div class="mb-6">
+            <h3 class="text-lg font-semibold mb-3 font-tang">大唐鸿胪寺通告</h3>
+            <div
+              class="bg-secondary p-4 rounded-lg text-gray-700 tang-border text-content"
+            >
+              <p id="communique-line1" class="text-justify">
+                诸位使者，请肃静！今夜荔枝失窃案事关重大，大理寺卿已下令彻查。请
+                <span id="communique-total-span">10</span> 位使者确认身份，准备接受审查。
+                <span id="communique-addict-span">3</span> 名荔枝瘾君子就隐藏在你们之中！
+              </p>
+              <p id="communique-line2" class="mt-2 text-justify">
+                游戏将通过四轮审查，帮助普通成员找出隐藏的
+                <span id="communique-addict-span-2">3</span> 名荔枝瘾成员。请
+                <span id="communique-total-span-2">10</span> 位使者各自查看身份（可设置姓名），然后开始游戏。
+              </p>
+            </div>
+          </div>
+
+          <!-- 具体配置 -->
+          <div class="mb-6">
+            <details class="bg-white/80 rounded-lg border border-primary/20 p-4">
+              <summary class="cursor-pointer font-semibold text-primary">具体配置</summary>
+              <div class="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label class="block text-sm text-gray-700 mb-1">普通阵营人数</label>
+                  <input id="count-ordinary" type="number" min="1" max="9" value="6" class="w-full border rounded px-3 py-2" />
+                </div>
+                <div>
+                  <label class="block text-sm text-gray-700 mb-1">荔枝瘾阵营人数</label>
+                  <input id="count-addict" type="number" min="1" max="9" value="3" class="w-full border rounded px-3 py-2" />
+                </div>
+                <div>
+                  <label class="block text-sm text-gray-700 mb-1">中立阵营人数</label>
+                  <input id="count-neutral" type="number" min="0" max="9" value="1" class="w-full border rounded px-3 py-2" />
+                </div>
+              </div>
+              <div class="text-xs text-gray-600 mt-2">
+                规则：普通≥荔枝瘾；荔枝瘾≥1；总人数5-10。
+              </div>
+              <div class="mt-6 border-t border-dashed border-primary/30 pt-4">
+                <div class="text-base font-semibold text-primary mb-3">特殊能力使用次数上限</div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
+                  <div>
+                    <label class="block text-sm text-gray-700 mb-1">沐恩天使</label>
+                    <input
+                      id="ability-limit-muEnAngel"
+                      type="number"
+                      min="1"
+                      max="1"
+                      value="1"
+                      class="w-full border rounded px-3 py-2 bg-gray-50 text-gray-500"
+                      disabled
+                      title="沐恩天使只在第二轮行动一次，能力上限固定为 1 次"
+                    />
+                  </div>
+                  <div>
+                    <label class="block text-sm text-gray-700 mb-1">金刚僧</label>
+                    <input
+                      id="ability-limit-goldenMonk"
+                      type="number"
+                      min="0"
+                      max="9"
+                      value="1"
+                      class="w-full border rounded px-3 py-2"
+                      title="主持人可自定义金刚僧本局可施展圣域的次数"
+                    />
+                  </div>
+                  <div>
+                    <label class="block text-sm text-gray-700 mb-1">胡庭药巫</label>
+                    <input id="ability-limit-medicineShaman" type="number" min="0" max="9" value="4" class="w-full border rounded px-3 py-2" />
+                  </div>
+                  <div>
+                    <label class="block text-sm text-gray-700 mb-1">易容术士</label>
+                    <input id="ability-limit-disguiseMaster" type="number" min="0" max="9" value="2" class="w-full border rounded px-3 py-2" />
+                  </div>
+                  <div>
+                    <label class="block text-sm text-gray-700 mb-1">牧歌传讯者</label>
+                    <input id="ability-limit-songMessenger" type="number" min="0" max="9" value="4" class="w-full border rounded px-3 py-2" />
+                  </div>
+                  <div>
+                    <label class="block text-sm text-gray-700 mb-1">骨哨虫王</label>
+                    <input id="ability-limit-boneWhistleKing" type="number" min="0" max="9" value="1" class="w-full border rounded px-3 py-2" />
+                  </div>
+                  <div>
+                    <label class="block text-sm text-gray-700 mb-1">缄默</label>
+                    <input
+                      id="ability-limit-silentWhisper"
+                      type="number"
+                      min="0"
+                      max="9"
+                      value="0"
+                      class="w-full border rounded px-3 py-2 bg-gray-50 text-gray-500"
+                      disabled
+                      title="缄默的使用次数由偷吃荔枝的次数决定"
+                    />
+                    <p class="text-[11px] text-gray-500 mt-1">每偷吃一颗荔枝，获得一次封印机会</p>
+                  </div>
+                </div>
+                <p class="text-xs text-gray-600 mt-2">
+                  默认值：沐恩天使 1 次（固定）、金刚僧 1 次（固定）、胡庭药巫 / 易容术士 / 牧歌传讯者 / 骨哨虫王 为 4 / 2 / 4 / 1。缄默的使用次数会随着偷吃荔枝次数自动增加。
+                </p>
+              </div>
+              <div class="mt-4 text-right">
+                <button id="apply-composition" class="bg-primary hover:bg-primary/90 text-white font-bold py-2 px-6 rounded-full shadow-md scale-hover">
+                  确认并刷新游戏
+                </button>
+              </div>
+            </details>
+          </div>
+
+          <!-- 新增：特殊身份分配区域 -->
+          <div class="mb-6">
+            <h3 class="text-lg font-semibold mb-3 font-tang">加入特殊身份</h3>
+            <div class="bg-secondary p-4 rounded-lg tang-border">
+              <div class="mb-4 p-3 bg-white/50 rounded-lg">
+                <p class="text-sm text-gray-700 mb-2">
+                  点击下方身份按钮可加入游戏
+                </p>
+                <p class="text-xs text-gray-600">
+                  普通阵营：沐恩天使、金刚僧、胡庭药巫、牧歌传讯者 |
+                  中立阵营：憨巴郎 |
+                  荔枝瘾阵营：缄默、易容术士、骨哨虫王
+                </p>
+              </div>
+
+              <div
+                class="flex flex-wrap items-center justify-center gap-3"
+              >
+                <!-- 沐恩天使 -->
+                <button
+                  class="special-role-btn bg-white hover:bg-gray-50 border-2 border-primary rounded-lg p-3 text-center scale-hover transition-all-300 relative"
+                  data-role="muEnAngel"
+                >
+                  <div class="font-bold text-primary mb-1">沐恩天使</div>
+                  <div class="text-sm text-gray-600 role-extra">普通阵营</div>
+                  <div class="text-xs text-gray-500 mt-1 role-extra">点击加入此身份</div>
+                  <div
+                    class="role-status absolute -top-1 -right-1 w-4 h-4 bg-gray-300 rounded-full hidden"
+                    data-role-status="muEnAngel"
+                  ></div>
+                </button>
+
+                <!-- 箭头：沐恩天使 -> 金刚僧 -->
+                <div class="flex flex-col items-center justify-center text-primary text-xl">
+                  <div class="hidden md:flex"><i class="fa fa-arrow-right"></i></div>
+                  <div class="md:hidden flex"><i class="fa fa-arrow-down"></i></div>
+                </div>
+
+                <!-- 金刚僧 -->
+                <button
+                  class="special-role-btn bg-white hover:bg-gray-50 border-2 border-primary rounded-lg p-3 text-center scale-hover transition-all-300 relative"
+                  data-role="goldenMonk"
+                >
+                  <div class="font-bold text-primary mb-1">金刚僧</div>
+                  <div class="text-sm text-gray-600 role-extra">普通阵营</div>
+                  <div class="text-xs text-gray-500 mt-1 role-extra">点击加入此身份</div>
+                  <div
+                    class="role-status absolute -top-1 -right-1 w-4 h-4 bg-gray-300 rounded-full hidden"
+                    data-role-status="goldenMonk"
+                  ></div>
+                </button>
+
+                <!-- 箭头：金刚僧 -> 缄默 -->
+                <div class="flex flex-col items-center justify-center text-primary text-xl">
+                  <div class="hidden md:flex"><i class="fa fa-arrow-right"></i></div>
+                  <div class="md:hidden flex"><i class="fa fa-arrow-down"></i></div>
+                </div>
+
+                <!-- 缄默 -->
+                <button
+                  class="special-role-btn bg-white hover:bg-gray-50 border-2 border-primary rounded-lg p-3 text-center scale-hover transition-all-300 relative"
+                  data-role="silentWhisper"
+                >
+                  <div class="font-bold text-primary mb-1">缄默</div>
+                  <div class="text-sm text-gray-600 role-extra">荔枝瘾阵营</div>
+                  <div class="text-xs text-gray-500 mt-1 role-extra">点击加入此身份</div>
+                  <div
+                    class="role-status absolute -top-1 -right-1 w-4 h-4 bg-gray-300 rounded-full hidden"
+                    data-role-status="silentWhisper"
+                  ></div>
+                </button>
+
+                <!-- 箭头：缄默 -> 胡庭药巫 -->
+                <div class="flex flex-col items-center justify-center text-primary text-xl">
+                  <div class="hidden md:flex"><i class="fa fa-arrow-right"></i></div>
+                  <div class="md:hidden flex"><i class="fa fa-arrow-down"></i></div>
+                </div>
+
+                <!-- 胡庭药巫 -->
+                <button
+                  class="special-role-btn bg-white hover:bg-gray-50 border-2 border-primary rounded-lg p-3 text-center scale-hover transition-all-300 relative"
+                  data-role="medicineShaman"
+                >
+                  <div class="font-bold text-primary mb-1">胡庭药巫</div>
+                  <div class="text-sm text-gray-600 role-extra">普通阵营</div>
+                  <div class="text-xs text-gray-500 mt-1 role-extra">点击加入此身份</div>
+                  <div
+                    class="role-status absolute -top-1 -right-1 w-4 h-4 bg-gray-300 rounded-full hidden"
+                    data-role-status="medicineShaman"
+                  ></div>
+                </button>
+
+                <!-- 箭头1 -->
+                <div
+                  class="hidden md:flex items-center justify-center text-primary text-xl"
+                >
+                  <i class="fa fa-arrow-right"></i>
+                </div>
+                <div
+                  class="md:hidden flex items-center justify-center text-primary text-xl"
+                >
+                  <i class="fa fa-arrow-down"></i>
+                </div>
+
+                <!-- 易容术士 -->
+                <button
+                  class="special-role-btn bg-white hover:bg-gray-50 border-2 border-primary rounded-lg p-3 text-center scale-hover transition-all-300 relative"
+                  data-role="disguiseMaster"
+                >
+                  <div class="font-bold text-primary mb-1">易容术士</div>
+                  <div class="text-sm text-gray-600 role-extra">荔枝瘾阵营</div>
+                  <div class="text-xs text-gray-500 mt-1 role-extra">点击加入此身份</div>
+                  <div
+                    class="role-status absolute -top-1 -right-1 w-4 h-4 bg-gray-300 rounded-full hidden"
+                    data-role-status="disguiseMaster"
+                  ></div>
+                </button>
+
+                <!-- 箭头2 -->
+                <div
+                  class="hidden md:flex items-center justify-center text-primary text-xl"
+                >
+                  <i class="fa fa-arrow-right"></i>
+                </div>
+                <div
+                  class="md:hidden flex items-center justify-center text-primary text-xl"
+                >
+                  <i class="fa fa-arrow-down"></i>
+                </div>
+
+                <!-- 牧歌传讯者 -->
+                <button
+                  class="special-role-btn bg-white hover:bg-gray-50 border-2 border-primary rounded-lg p-3 text-center scale-hover transition-all-300 relative"
+                  data-role="songMessenger"
+                >
+                  <div class="font-bold text-primary mb-1">牧歌传讯者</div>
+                  <div class="text-sm text-gray-600 role-extra">普通阵营</div>
+                  <div class="text-xs text-gray-500 mt-1 role-extra">点击加入此身份</div>
+                  <div
+                    class="role-status absolute -top-1 -right-1 w-4 h-4 bg-gray-300 rounded-full hidden"
+                    data-role-status="songMessenger"
+                  ></div>
+                </button>
+
+                <!-- 箭头3 -->
+                <div
+                  class="hidden md:flex items-center justify-center text-primary text-xl"
+                >
+                  <i class="fa fa-arrow-right"></i>
+                </div>
+                <div
+                  class="md:hidden flex items-center justify-center text-primary text-xl"
+                >
+                  <i class="fa fa-arrow-down"></i>
+                </div>
+
+                <!-- 骨哨虫王 -->
+                <button
+                  class="special-role-btn bg-white hover:bg-gray-50 border-2 border-primary rounded-lg p-3 text-center scale-hover transition-all-300 relative"
+                  data-role="boneWhistleKing"
+                >
+                  <div class="font-bold text-primary mb-1">骨哨虫王</div>
+                  <div class="text-sm text-gray-600 role-extra">荔枝瘾阵营</div>
+                  <div class="text-xs text-gray-500 mt-1 role-extra">点击加入此身份</div>
+                  <div
+                    class="role-status absolute -top-1 -right-1 w-4 h-4 bg-gray-300 rounded-full hidden"
+                    data-role-status="boneWhistleKing"
+                  ></div>
+                </button>
+
+                <!-- 憨巴郎 -->
+                <button
+                  class="special-role-btn bg-white hover:bg-gray-50 border-2 border-primary rounded-lg p-3 text-center scale-hover transition-all-300 relative"
+                  data-role="hanBaLang"
+                >
+                  <div class="font-bold text-primary mb-1">憨巴郎</div>
+                  <div class="text-sm text-gray-600 role-extra">中立阵营</div>
+                  <div class="text-xs text-gray-500 mt-1 role-extra">点击加入此身份</div>
+                  <div
+                    class="role-status absolute -top-1 -right-1 w-4 h-4 bg-gray-300 rounded-full hidden"
+                    data-role-status="hanBaLang"
+                  ></div>
+                </button>
+              </div>
+
+              <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+                <button
+                  id="assign-all-special-roles"
+                  class="bg-primary hover:bg-primary/90 text-white font-bold py-2 px-6 rounded-full shadow-md scale-hover"
+                >
+                  一键加入所有身份
+                </button>
+                <button
+                  id="toggle-all-identities"
+                  class="bg-white text-primary border-2 border-primary hover:bg-primary/5 font-bold py-2 px-6 rounded-full shadow-md scale-hover"
+                >
+                  一键展示所有身份（仅供调试使用）
+                </button>
+              </div>
+
+              <!-- 特殊身份说明 -->
+              <div
+                class="mt-4 p-3 bg-white/80 rounded-lg border border-primary/20"
+              >
+                <h4 class="font-semibold text-primary mb-2 text-sm">
+                  特殊身份说明：
+                </h4>
+                <div class="flex flex-col md:flex-row gap-4 text-xs">
+                  <div class="flex-1">
+                    <p class="font-medium text-dark mb-1">普通阵营：</p>
+                    <ul class="list-disc pl-3 space-y-1">
+                      <li>
+                        <strong>沐恩天使</strong
+                        >：第二轮中祝福一名使者，使其能力免疫封印并得到强化（上限：<span id="identity-ability-limit-muEnAngel">1</span>次）。强化列表：
+                        <span class="block text-[12px] text-gray-600 pl-3">
+                          金刚僧揭示圣域抵御过的能力类型、缄默排除错误身份、胡庭药巫获知具体身份、易容术士互换房间、牧歌传讯者得知上一轮虫王行动、骨哨虫王上限+1、憨巴郎票数+荔枝瘾人数。
+                        </span>
+                      </li>
+                      <li>
+                        <strong>金刚僧</strong
+                        >：可施展「不动明王咒」，令一个房间成为圣域，
+                        该房间本轮免疫易容术士移动、骨哨虫王强制偷吃，房内特殊身份也不会被缄默封印。（上限：<span id="identity-ability-limit-goldenMonk">1</span>次）
+                      </li>
+                      <li>
+                        <strong>胡庭药巫</strong
+                        >：查验某个使者是否为荔枝瘾（上限：<span id="identity-ability-limit-medicineShaman">4</span>次）
+                      </li>
+                      <li>
+                        <strong>牧歌传讯者</strong
+                        >：查验某一轮所有房间的真实人数（上限：<span id="identity-ability-limit-songMessenger">4</span>次）
+                      </li>
+                    </ul>
+                  </div>
+                  <div class="flex-1">
+                    <p class="font-medium text-amber-600 mb-1">中立阵营：</p>
+                    <ul class="list-disc pl-3 space-y-1">
+                      <li>
+                        <strong>憨巴郎</strong
+                        >：若以最高票被投出，则立即单独胜利（被缄默封印后无效）
+                      </li>
+                    </ul>
+                  </div>
+                  <div class="flex-1">
+                    <p class="font-medium text-primary mb-1">荔枝瘾阵营：</p>
+                    <ul class="list-disc pl-3 space-y-1">
+                      <li>
+                        <strong>缄默</strong
+                        >：偷吃荔枝可累积封印次数，猜测并封印普通/中立身份（上限：<span id="identity-ability-limit-silentWhisper">随偷吃次数增加</span>，次数下轮生效）
+                      </li>
+                      <li>
+                        <strong>易容术士</strong
+                        >：移动到其他房间，改变真实成员分配，不受监管影响（上限：<span id="identity-ability-limit-disguiseMaster">2</span>次）
+                      </li>
+                      <li>
+                        <strong>骨哨虫王</strong
+                        >：强制某个房间荔枝被偷吃（上限：<span id="identity-ability-limit-boneWhistleKing">1</span>次）
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="mb-6">
+            <h3 class="text-lg font-semibold mb-3 font-tang">使者名录</h3>
+            <div id="player-card-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
+              <!-- 使者方框将通过JS动态生成 -->
+            </div>
+          </div>
+
+          <div class="text-center">
+            <button
+              id="start-game"
+              class="bg-primary hover:bg-primary/90 text-white font-bold py-3 px-8 rounded-full shadow-md scale-hover font-tang"
+            >
+              开始审查
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- 模块1：第一轮审查 -->
+      <section id="module-1" class="hidden transition-all duration-500">
+        <div class="bg-white rounded-xl shadow-card p-6 mb-8">
+          <h2 class="text-2xl font-bold mb-6 text-primary flex items-center">
+            <i class="fa fa-building-o mr-2"></i>第一轮审查
+          </h2>
+
+          <div class="mb-4">
+            <div class="bg-white/70 border border-primary/10 rounded-lg p-4 text-sm text-gray-700">
+              跳过【选队长阶段】【讨论阶段】【分配阶段】，本轮由大理寺卿直接分配房间及被监管者。直接进入第一轮【行动阶段】。
+            </div>
+          </div>
+
+          <div class="mb-6">
+            <h3 class="text-lg font-semibold mb-2">使者列表</h3>
+            <div
+              id="players-module-1"
+              class="flex flex-wrap gap-2 p-3 bg-secondary rounded-lg min-h-[80px]"
+            >
+              <!-- 使者将通过JS动态生成 -->
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <div
+              id="small-room-1"
+              class="room border-2 border-gray-300 rounded-lg p-4 hover:border-primary transition-all-300"
+            >
+              <h3 class="font-semibold mb-2 flex justify-between">
+                <span>小房间 (限3人)</span>
+                <span
+                  id="small-count-1"
+                  class="bg-light px-2 py-1 rounded-full text-sm"
+                  >0/3</span
+                >
+              </h3>
+              <div
+                class="room-players min-h-[100px] p-2 bg-gray-50 rounded"
+              ></div>
+              <div id="small-guard-area-1" class="mt-3 hidden">
+                <label class="block text-sm font-medium mb-1"
+                  >选择被监管者：</label
+                >
+                <div class="room-guards flex flex-wrap gap-2"></div>
+              </div>
+            </div>
+
+            <div
+              id="large-room-1"
+              class="room border-2 border-gray-300 rounded-lg p-4 hover:border-primary transition-all-300"
+            >
+              <h3 class="font-semibold mb-2 flex justify-between">
+                <span>大房间 (限7人)</span>
+                <span
+                  id="large-count-1"
+                  class="bg-light px-2 py-1 rounded-full text-sm"
+                  >0/7</span
+                >
+              </h3>
+              <div
+                class="room-players min-h-[100px] p-2 bg-gray-50 rounded"
+              ></div>
+              <div id="large-guard-area-1" class="mt-3 hidden">
+                <label class="block text-sm font-medium mb-1"
+                  >选择被监管者：</label
+                >
+                <div class="room-guards flex flex-wrap gap-2"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="mb-4 text-center">
+            <button
+              id="random-module-1"
+              class="bg-dark hover:bg-dark/90 text-white font-bold py-2 px-6 rounded-full shadow-md scale-hover"
+            >
+              随机分配房间
+            </button>
+          </div>
+
+          <div class="flex justify-between">
+            <button
+              id="back-to-0"
+              class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-6 rounded-full shadow-md scale-hover"
+            >
+              返回
+            </button>
+            <button
+              id="confirm-1"
+              class="bg-primary hover:bg-primary/90 text-white font-bold py-2 px-6 rounded-full shadow-md scale-hover"
+              disabled
+            >
+              确认部署
+            </button>
+          </div>
+        </div>
+
+        <div
+          id="result-1"
+          class="hidden bg-white rounded-xl shadow-card p-6 mb-8"
+        >
+          <h3 class="text-xl font-bold mb-4 text-center">第一轮审查结果</h3>
+
+          <div class="mb-6">
+            <div class="rounded-2xl bg-white/90 border border-primary/20 shadow-inner p-4 space-y-3 text-sm text-gray-700">
+              <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                <h4 class="font-semibold text-primary text-base"> ⑤【结算阶段】</h4>
+                <div class="flex flex-col sm:flex-row sm:items-center gap-2">
+                  <div class="flex items-center gap-2 text-xs uppercase tracking-wide text-gray-500">
+                    <i class="fa fa-clock-o text-primary"></i>
+                    <span>发言计时</span>
+                    <span id="settlement-timer-1" class="font-mono text-lg text-primary">01:00</span>
+                  </div>
+                  <div class="flex gap-2">
+                    <button
+                      id="start-settlement-timer-1"
+                      class="px-3 py-1 rounded-full bg-primary text-white text-xs font-semibold hover:bg-primary/90 transition"
+                    >
+                      开始
+                    </button>
+                    <button
+                      id="reset-settlement-timer-1"
+                      class="px-3 py-1 rounded-full bg-gray-200 text-gray-800 text-xs font-semibold hover:bg-gray-300 transition"
+                    >
+                      重置
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <p>现在揭晓本轮的荔枝状态。请各位使者根据本轮结果进行发言，你可以指认可疑之人，也可以为自己辩护。请畅所欲言。</p>
+              <p>
+                “发言顺序为：
+                <span id="settlement-start-1" class="font-semibold text-primary">待定</span>
+                到 …（按顺序）…
+                <span id="settlement-end-1" class="font-semibold text-primary">待定</span>
+                ”
+              </p>
+              <div>
+                <p class="text-xs text-gray-500 mb-1">发言顺序（从随机使者开始循环）：</p>
+                <div id="settlement-order-1" class="flex flex-wrap gap-2"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- 小房间结果 -->
+            <div class="text-center p-4 border rounded-lg">
+              <h4 id="small-result-title-1" class="font-semibold mb-2">小房间</h4>
+              <div id="small-result-1" class="text-lg mb-3"></div>
+              <p class="text-gray-600 mb-2">
+                被监管者: <span id="small-guard-1"></span>
+              </p>
+
+              <!-- 小房间成员列表 -->
+              <div class="mt-4">
+                <p class="text-sm font-medium text-gray-700 mb-1">房间成员:</p>
+                <div
+                  id="small-room-members-1"
+                  class="flex flex-wrap justify-center gap-2 text-sm"
+                ></div>
+              </div>
+            </div>
+
+            <!-- 大房间结果 -->
+            <div class="text-center p-4 border rounded-lg">
+              <h4 id="large-result-title-1" class="font-semibold mb-2">大房间</h4>
+              <div id="large-result-1" class="text-lg mb-3"></div>
+              <p class="text-gray-600 mb-2">
+                被监管者: <span id="large-guard-1"></span>
+              </p>
+
+              <!-- 大房间成员列表 -->
+              <div class="mt-4">
+                <p class="text-sm font-medium text-gray-700 mb-1">房间成员:</p>
+                <div
+                  id="large-room-members-1"
+                  class="flex flex-wrap justify-center gap-2 text-sm"
+                ></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 底部按钮（添加返回按钮） -->
+          <div class="flex justify-between mt-6">
+            <button
+              id="back-to-1-config"
+              class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-6 rounded-full shadow-md scale-hover"
+            >
+              返回修改
+            </button>
+            <button
+              id="module1-to-module2"
+              class="bg-primary hover:bg-primary/90 text-white font-bold py-2 px-6 rounded-full shadow-md scale-hover"
+            >
+              进入第二轮审查
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- 模块1结果页面（保留用于向后兼容，但不再使用） -->
+      <section id="module-1-result" class="hidden transition-all duration-500">
+        <div class="bg-white rounded-xl shadow-card p-6 mb-8">
+          <h2 class="text-2xl font-bold mb-6 text-primary flex items-center">
+            <i class="fa fa-search mr-2"></i>第一轮审查结果
+          </h2>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <div class="text-center p-4 border rounded-lg">
+              <h4 id="small-result-title-1" class="font-semibold mb-2">小房间</h4>
+              <div id="small-result-1" class="text-lg mb-3"></div>
+              <p class="text-gray-600 mb-2">
+                被监管者: <span id="small-guard-1"></span>
+              </p>
+              <div class="mt-4">
+                <p class="text-sm font-medium text-gray-700 mb-1">房间成员:</p>
+                <div
+                  id="small-room-members-1"
+                  class="flex flex-wrap justify-center gap-2 text-sm"
+                ></div>
+              </div>
+            </div>
+
+            <div class="text-center p-4 border rounded-lg">
+              <h4 id="large-result-title-1" class="font-semibold mb-2">大房间</h4>
+              <div id="large-result-1" class="text-lg mb-3"></div>
+              <p class="text-gray-600 mb-2">
+                被监管者: <span id="large-guard-1"></span>
+              </p>
+              <div class="mt-4">
+                <p class="text-sm font-medium text-gray-700 mb-1">房间成员:</p>
+                <div
+                  id="large-room-members-1"
+                  class="flex flex-wrap justify-center gap-2 text-sm"
+                ></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex justify-between">
+            <button
+              id="back-to-1-config"
+              class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-6 rounded-full shadow-md scale-hover"
+            >
+              返回修改
+            </button>
+            <button
+              id="module1-to-module2"
+              class="bg-primary hover:bg-primary/90 text-white font-bold py-2 px-6 rounded-full shadow-md scale-hover"
+            >
+              进入第二轮审查
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- 模块2：第二轮审查 -->
+      <section id="module-2" class="hidden transition-all duration-500">
+        <div class="bg-white rounded-xl shadow-card p-6 mb-8">
+          <h2 class="text-2xl font-bold mb-6 text-primary flex items-center">
+            <i class="fa fa-building-o mr-2"></i>第二轮审查
+          </h2>
+
+          <div class="mb-8">
+            <div class="rounded-2xl bg-gradient-to-br from-white via-secondary/20 to-white border border-primary/20 shadow-inner p-5 space-y-6 text-sm text-gray-700">
+              <div class="flex items-start gap-4">
+                <div class="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold">①</div>
+                <div class="flex-1 space-y-2">
+                  <div class="flex items-center justify-between">
+                    <h4 class="font-semibold text-primary text-base">【选队长阶段】</h4>
+                    <button
+                      id="refresh-captain-2"
+                      class="text-xs text-primary border border-primary/30 rounded-full px-3 py-0.5 hover:bg-primary/5 transition"
+                    >
+                      重新推举队长
+                    </button>
+                  </div>
+                  <p>本轮即将开始，现随机推举一位使者担任胡人队长。</p>
+                  <p>
+                    <span class="font-semibold text-primary" id="captain-name-2">待定</span>，请举手示意。若有超过半数使者同意他担任队长，则他在分配阶段作为队长，决定被监管者人选。现在同意的人请举手。
+                  </p>
+                  <p class="text-xs text-gray-500 italic">表决通过，请队长就职。 / 表决未通过，我们将重新推举一位队长。（最多三次）</p>
+                </div>
+              </div>
+
+              <div class="border-t border-dashed border-primary/10"></div>
+
+              <div class="flex items-start gap-4">
+                <div class="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold">②</div>
+                <div class="flex-1 space-y-3">
+                  <div>
+                    <h4 class="font-semibold text-primary text-base mb-1">【讨论阶段】（5分钟）</h4>
+                    <p>现在进入讨论阶段。请所有使者自由发言，商议本轮的房间分配与被监管者人选。</p>
+                    <p class="text-xs text-gray-600">“天使可沐恩赐福，金刚可立地成界，缄默可窥秘封印，巫医可断吉凶，术士可移形换位，牧歌可闻风报数，虫王可驱虫蚀果，憨郎可置身局外——诸使者请各献良策。”</p>
+                  </div>
+                  <div class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between bg-white/80 border border-primary/10 rounded-lg p-3">
+                    <div class="flex items-center gap-2 text-xs uppercase tracking-wide text-gray-500">
+                      <i class="fa fa-clock-o text-primary"></i>
+                      <span>倒计时</span>
+                      <span id="discussion-timer-2" class="font-mono text-lg text-primary">05:00</span>
+                    </div>
+                    <div class="flex gap-2">
+                      <button
+                        id="start-timer-2"
+                        class="px-3 py-1 rounded-full bg-primary text-white text-xs font-semibold hover:bg-primary/90 transition"
+                      >
+                        开始
+                      </button>
+                      <button
+                        id="reset-timer-2"
+                        class="px-3 py-1 rounded-full bg-gray-200 text-gray-800 text-xs font-semibold hover:bg-gray-300 transition"
+                      >
+                        重置
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="border-t border-dashed border-primary/10"></div>
+
+              <div class="flex items-start gap-4">
+                <div class="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold">③</div>
+                <div class="flex-1 space-y-3">
+                  <h4 class="font-semibold text-primary text-base">【分配阶段】</h4>
+                  <p>
+                    讨论时间到。请从
+                    <span class="font-semibold text-primary" id="selection-start-2">待定</span>
+                    开始，依次选择自己要进入的房间，队长
+                    <span class="font-semibold text-primary" id="captain-name-inline-2">待定</span>
+                    为每个房间指定一名被监管者。
+                  </p>
+                  <div>
+                    <p class="text-xs text-gray-500 mb-1">选择顺序（从随机使者开始循环）：</p>
+                    <div id="selection-order-2" class="flex flex-wrap gap-2"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="mb-6">
+            <h3 class="text-lg font-semibold mb-2">第一轮审查结果</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <!-- 第一轮小房间结果 -->
+              <div class="bg-white border-2 border-gray-300 rounded-lg p-4 shadow-sm">
+                <div class="flex items-center justify-between mb-3">
+                  <h4 class="font-semibold text-primary">小房间</h4>
+                  <div id="prev-round1-small-result" class="text-lg font-bold"></div>
+                </div>
+                <div class="mt-3">
+                  <p class="text-xs text-gray-500 mb-2">房间成员:</p>
+                  <div
+                    id="prev-round1-small-members"
+                    class="flex flex-wrap gap-2"
+                  ></div>
+                </div>
+              </div>
+
+              <!-- 第一轮大房间结果 -->
+              <div class="bg-white border-2 border-gray-300 rounded-lg p-4 shadow-sm">
+                <div class="flex items-center justify-between mb-3">
+                  <h4 class="font-semibold text-primary">大房间</h4>
+                  <div id="prev-round1-large-result" class="text-lg font-bold"></div>
+                </div>
+                <div class="mt-3">
+                  <p class="text-xs text-gray-500 mb-2">房间成员:</p>
+                  <div
+                    id="prev-round1-large-members"
+                    class="flex flex-wrap gap-2"
+                  ></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="mb-6">
+            <h3 class="text-lg font-semibold mb-2">使者列表</h3>
+            <div
+              id="players-module-2"
+              class="flex flex-wrap gap-2 p-3 bg-secondary rounded-lg min-h-[80px]"
+            >
+              <!-- 使者将通过JS动态生成 -->
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <div
+              id="small-room-2"
+              class="room border-2 border-gray-300 rounded-lg p-4 hover:border-primary transition-all-300"
+            >
+              <h3 class="font-semibold mb-2 flex justify-between">
+                <span>小房间 (限3人)</span>
+                <span
+                  id="small-count-2"
+                  class="bg-light px-2 py-1 rounded-full text-sm"
+                  >0/3</span
+                >
+              </h3>
+              <div
+                class="room-players min-h-[100px] p-2 bg-gray-50 rounded"
+              ></div>
+              <div id="small-guard-area" class="mt-3 hidden">
+                <label class="block text-sm font-medium mb-1"
+                  >选择被监管者：</label
+                >
+                <div class="room-guards flex flex-wrap gap-2"></div>
+              </div>
+            </div>
+
+            <div
+              id="large-room-2"
+              class="room border-2 border-gray-300 rounded-lg p-4 hover:border-primary transition-all-300"
+            >
+              <h3 class="font-semibold mb-2 flex justify-between">
+                <span>大房间 (限7人)</span>
+                <span
+                  id="large-count-2"
+                  class="bg-light px-2 py-1 rounded-full text-sm"
+                  >0/7</span
+                >
+              </h3>
+              <div
+                class="room-players min-h-[100px] p-2 bg-gray-50 rounded"
+              ></div>
+              <div id="large-guard-area" class="mt-3 hidden">
+                <label class="block text-sm font-medium mb-1"
+                  >选择被监管者：</label
+                >
+                <div class="room-guards flex flex-wrap gap-2"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="mb-4 text-center">
+            <button
+              id="random-module-2"
+              class="bg-dark hover:bg-dark/90 text-white font-bold py-2 px-6 rounded-full shadow-md scale-hover"
+            >
+              随机分配房间
+            </button>
+          </div>
+
+          <div class="flex justify-between">
+            <button
+              id="back-to-1"
+              class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-6 rounded-full shadow-md scale-hover"
+            >
+              返回第一轮结果
+            </button>
+            <button
+              id="confirm-2"
+              class="bg-primary hover:bg-primary/90 text-white font-bold py-2 px-6 rounded-full shadow-md scale-hover"
+              disabled
+            >
+              确认部署
+            </button>
+          </div>
+        </div>
+
+        <div
+          id="result-2"
+          class="hidden bg-white rounded-xl shadow-card p-6 mb-8"
+        >
+          <h3 class="text-xl font-bold mb-4 text-center">第二轮审查结果</h3>
+
+          <div class="mb-6">
+            <div class="rounded-2xl bg-white/90 border border-primary/20 shadow-inner p-4 space-y-3 text-sm text-gray-700">
+              <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                <h4 class="font-semibold text-primary text-base"> ⑤【结算阶段】</h4>
+                <div class="flex flex-col sm:flex-row sm:items-center gap-2">
+                  <div class="flex items-center gap-2 text-xs uppercase tracking-wide text-gray-500">
+                    <i class="fa fa-clock-o text-primary"></i>
+                    <span>发言计时</span>
+                    <span id="settlement-timer-2" class="font-mono text-lg text-primary">01:00</span>
+                  </div>
+                  <div class="flex gap-2">
+                    <button
+                      id="start-settlement-timer-2"
+                      class="px-3 py-1 rounded-full bg-primary text-white text-xs font-semibold hover:bg-primary/90 transition"
+                    >
+                      开始
+                    </button>
+                    <button
+                      id="reset-settlement-timer-2"
+                      class="px-3 py-1 rounded-full bg-gray-200 text-gray-800 text-xs font-semibold hover:bg-gray-300 transition"
+                    >
+                      重置
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <p>现在揭晓本轮的荔枝状态。请各位使者根据本轮结果进行发言，你可以指认可疑之人，也可以为自己辩护。请畅所欲言。</p>
+              <p>
+                “发言顺序为：
+                <span id="settlement-start-2" class="font-semibold text-primary">待定</span>
+                到 …（按顺序）…
+                <span id="settlement-end-2" class="font-semibold text-primary">待定</span>
+                ”
+              </p>
+              <div>
+                <p class="text-xs text-gray-500 mb-1">发言顺序（从随机使者开始循环）：</p>
+                <div id="settlement-order-2" class="flex flex-wrap gap-2"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- 小房间结果 -->
+            <div class="text-center p-4 border rounded-lg">
+              <h4 id="small-result-title-2" class="font-semibold mb-2">小房间</h4>
+              <div id="small-result-2" class="text-lg mb-3"></div>
+              <p class="text-gray-600 mb-2">
+                被监管者: <span id="small-guard-2"></span>
+              </p>
+
+              <!-- 小房间成员列表 -->
+              <div class="mt-4">
+                <p class="text-sm font-medium text-gray-700 mb-1">房间成员:</p>
+                <div
+                  id="small-room-members-2"
+                  class="flex flex-wrap justify-center gap-2 text-sm"
+                ></div>
+              </div>
+            </div>
+
+            <!-- 大房间结果 -->
+            <div class="text-center p-4 border rounded-lg">
+              <h4 id="large-result-title-2" class="font-semibold mb-2">大房间</h4>
+              <div id="large-result-2" class="text-lg mb-3"></div>
+              <p class="text-gray-600 mb-2">
+                被监管者: <span id="large-guard-2"></span>
+              </p>
+
+              <!-- 大房间成员列表 -->
+              <div class="mt-4">
+                <p class="text-sm font-medium text-gray-700 mb-1">房间成员:</p>
+                <div
+                  id="large-room-members-2"
+                  class="flex flex-wrap justify-center gap-2 text-sm"
+                ></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 底部按钮（添加返回按钮） -->
+          <div class="flex justify-between mt-6">
+            <button
+              id="back-to-2-config"
+              class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-6 rounded-full shadow-md scale-hover"
+            >
+              返回修改
+            </button>
+            <button
+              id="to-module-3"
+              class="bg-primary hover:bg-primary/90 text-white font-bold py-2 px-6 rounded-full shadow-md scale-hover"
+            >
+              进入第三轮审查
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- 模块3：第三轮审查 -->
+      <section id="module-3" class="hidden transition-all duration-500">
+        <div class="bg-white rounded-xl shadow-card p-6 mb-8">
+          <h2 class="text-2xl font-bold mb-6 text-primary flex items-center">
+            <i class="fa fa-building mr-2"></i>第三轮审查
+          </h2>
+
+          <div class="mb-8">
+            <div class="rounded-2xl bg-gradient-to-br from-white via-secondary/20 to-white border border-primary/20 shadow-inner p-5 space-y-6 text-sm text-gray-700">
+              <div class="flex items-start gap-4">
+                <div class="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold">①</div>
+                <div class="flex-1 space-y-2">
+                  <div class="flex items-center justify-between">
+                    <h4 class="font-semibold text-primary text-base">【选队长阶段】</h4>
+                    <button
+                      id="refresh-captain-3"
+                      class="text-xs text-primary border border-primary/30 rounded-full px-3 py-0.5 hover:bg-primary/5 transition"
+                    >
+                      重新推举队长
+                    </button>
+                  </div>
+                  <p>本轮即将开始，现随机推举一位使者担任胡人队长。</p>
+                  <p>
+                    <span class="font-semibold text-primary" id="captain-name-3">待定</span>，请举手示意。若有超过半数使者同意他担任队长，则他在分配阶段作为队长，决定被监管者人选。现在同意的人请举手。
+                  </p>
+                  <p class="text-xs text-gray-500 italic">表决通过，请队长就职。 / 表决未通过，我们将重新推举一位队长。（最多三次）</p>
+                </div>
+              </div>
+
+              <div class="border-t border-dashed border-primary/10"></div>
+
+              <div class="flex items-start gap-4">
+                <div class="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold">②</div>
+                <div class="flex-1 space-y-3">
+                  <div>
+                    <h4 class="font-semibold text-primary text-base mb-1">【讨论阶段】（5分钟）</h4>
+                    <p>现在进入讨论阶段。请所有使者自由发言，商议本轮的房间分配与被监管者人选。</p>
+                    <p class="text-xs text-gray-600">“天使可沐恩赐福，金刚可立地成界，缄默可窥秘封印，巫医可断吉凶，术士可移形换位，牧歌可闻风报数，虫王可驱虫蚀果，憨郎可置身局外——诸使者请各献良策。”</p>
+                  </div>
+                  <div class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between bg-white/80 border border-primary/10 rounded-lg p-3">
+                    <div class="flex items-center gap-2 text-xs uppercase tracking-wide text-gray-500">
+                      <i class="fa fa-clock-o text-primary"></i>
+                      <span>倒计时</span>
+                      <span id="discussion-timer-3" class="font-mono text-lg text-primary">05:00</span>
+                    </div>
+                    <div class="flex gap-2">
+                      <button
+                        id="start-timer-3"
+                        class="px-3 py-1 rounded-full bg-primary text-white text-xs font-semibold hover:bg-primary/90 transition"
+                      >
+                        开始
+                      </button>
+                      <button
+                        id="reset-timer-3"
+                        class="px-3 py-1 rounded-full bg-gray-200 text-gray-800 text-xs font-semibold hover:bg-gray-300 transition"
+                      >
+                        重置
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="border-t border-dashed border-primary/10"></div>
+
+              <div class="flex items-start gap-4">
+                <div class="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold">③</div>
+                <div class="flex-1 space-y-3">
+                  <h4 class="font-semibold text-primary text-base">【分配阶段】</h4>
+                  <p>
+                    讨论时间到。请从
+                    <span class="font-semibold text-primary" id="selection-start-3">待定</span>
+                    开始，依次选择自己要进入的房间，队长
+                    <span class="font-semibold text-primary" id="captain-name-inline-3">待定</span>
+                    为每个房间指定一名被监管者。
+                  </p>
+                  <div>
+                    <p class="text-xs text-gray-500 mb-1">选择顺序（从随机使者开始循环）：</p>
+                    <div id="selection-order-3" class="flex flex-wrap gap-2"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="mb-6">
+            <h3 class="text-lg font-semibold mb-2">前两轮审查结果</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <!-- 第一轮结果 -->
+              <div class="bg-white border-2 border-gray-300 rounded-lg p-4 shadow-sm">
+                <h4 class="font-semibold text-primary mb-3">第一轮</h4>
+                <div class="grid grid-cols-2 gap-3">
+                  <!-- 小房间 -->
+                  <div class="bg-gray-50 rounded-lg p-3">
+                    <div class="flex items-center justify-between mb-2">
+                      <span class="text-xs font-medium text-gray-600">小房间</span>
+                      <div id="prev-round1-small-result-mod3" class="text-sm font-bold"></div>
+                    </div>
+                    <div
+                      id="prev-round1-small-members-mod3"
+                      class="flex flex-wrap gap-1 mt-2"
+                    ></div>
+                  </div>
+                  <!-- 大房间 -->
+                  <div class="bg-gray-50 rounded-lg p-3">
+                    <div class="flex items-center justify-between mb-2">
+                      <span class="text-xs font-medium text-gray-600">大房间</span>
+                      <div id="prev-round1-large-result-mod3" class="text-sm font-bold"></div>
+                    </div>
+                    <div
+                      id="prev-round1-large-members-mod3"
+                      class="flex flex-wrap gap-1 mt-2"
+                    ></div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 第二轮结果 -->
+              <div class="bg-white border-2 border-gray-300 rounded-lg p-4 shadow-sm">
+                <h4 class="font-semibold text-primary mb-3">第二轮</h4>
+                <div class="grid grid-cols-2 gap-3">
+                  <!-- 小房间 -->
+                  <div class="bg-gray-50 rounded-lg p-3">
+                    <div class="flex items-center justify-between mb-2">
+                      <span class="text-xs font-medium text-gray-600">小房间</span>
+                      <div id="prev-small-result" class="text-sm font-bold"></div>
+                    </div>
+                    <div
+                      id="prev-small-members"
+                      class="flex flex-wrap gap-1 mt-2"
+                    ></div>
+                  </div>
+                  <!-- 大房间 -->
+                  <div class="bg-gray-50 rounded-lg p-3">
+                    <div class="flex items-center justify-between mb-2">
+                      <span class="text-xs font-medium text-gray-600">大房间</span>
+                      <div id="prev-large-result" class="text-sm font-bold"></div>
+                    </div>
+                    <div
+                      id="prev-large-members"
+                      class="flex flex-wrap gap-1 mt-2"
+                    ></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="mb-6">
+            <h3 class="text-lg font-semibold mb-2">使者列表</h3>
+            <div
+              id="players-module-3"
+              class="flex flex-wrap gap-2 p-3 bg-secondary rounded-lg min-h-[80px]"
+            >
+              <!-- 使者将通过JS动态生成 -->
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <div
+              id="small-room-3"
+              class="room border-2 border-gray-300 rounded-lg p-4 hover:border-primary transition-all-300"
+            >
+              <h3 class="font-semibold mb-2 flex justify-between">
+                <span>小房间 (限3人)</span>
+                <span
+                  id="small-count-3"
+                  class="bg-light px-2 py-1 rounded-full text-sm"
+                  >0/3</span
+                >
+              </h3>
+              <div
+                class="room-players min-h-[100px] p-2 bg-gray-50 rounded"
+              ></div>
+              <div id="small-guard-area-3" class="mt-3 hidden">
+                <label class="block text-sm font-medium mb-1"
+                  >选择被监管者：</label
+                >
+                <div class="room-guards flex flex-wrap gap-2"></div>
+              </div>
+            </div>
+
+            <div
+              id="large-room-3"
+              class="room border-2 border-gray-300 rounded-lg p-4 hover:border-primary transition-all-300"
+            >
+              <h3 class="font-semibold mb-2 flex justify-between">
+                <span>大房间 (限7人)</span>
+                <span
+                  id="large-count-3"
+                  class="bg-light px-2 py-1 rounded-full text-sm"
+                  >0/7</span
+                >
+              </h3>
+              <div
+                class="room-players min-h-[100px] p-2 bg-gray-50 rounded"
+              ></div>
+              <div id="large-guard-area-3" class="mt-3 hidden">
+                <label class="block text-sm font-medium mb-1"
+                  >选择被监管者：</label
+                >
+                <div class="room-guards flex flex-wrap gap-2"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="mb-4 text-center">
+            <button
+              id="random-module-3"
+              class="bg-dark hover:bg-dark/90 text-white font-bold py-2 px-6 rounded-full shadow-md scale-hover"
+            >
+              随机分配房间
+            </button>
+          </div>
+
+          <div class="flex justify-between">
+            <button
+              id="back-to-2"
+              class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-6 rounded-full shadow-md scale-hover"
+            >
+              返回
+            </button>
+            <button
+              id="confirm-3"
+              class="bg-primary hover:bg-primary/90 text-white font-bold py-2 px-6 rounded-full shadow-md scale-hover"
+              disabled
+            >
+              确认部署
+            </button>
+          </div>
+        </div>
+
+        <div
+          id="result-3"
+          class="hidden bg-white rounded-xl shadow-card p-6 mb-8"
+        >
+          <h3 class="text-xl font-bold mb-4 text-center">第三轮审查结果</h3>
+
+          <div class="mb-6">
+            <div class="rounded-2xl bg-white/90 border border-primary/20 shadow-inner p-4 space-y-3 text-sm text-gray-700">
+              <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                <h4 class="font-semibold text-primary text-base"> ⑤【结算阶段】</h4>
+                <div class="flex flex-col sm:flex-row sm:items-center gap-2">
+                  <div class="flex items-center gap-2 text-xs uppercase tracking-wide text-gray-500">
+                    <i class="fa fa-clock-o text-primary"></i>
+                    <span>发言计时</span>
+                    <span id="settlement-timer-3" class="font-mono text-lg text-primary">01:00</span>
+                  </div>
+                  <div class="flex gap-2">
+                    <button
+                      id="start-settlement-timer-3"
+                      class="px-3 py-1 rounded-full bg-primary text-white text-xs font-semibold hover:bg-primary/90 transition"
+                    >
+                      开始
+                    </button>
+                    <button
+                      id="reset-settlement-timer-3"
+                      class="px-3 py-1 rounded-full bg-gray-200 text-gray-800 text-xs font-semibold hover:bg-gray-300 transition"
+                    >
+                      重置
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <p>现在揭晓本轮的荔枝状态。请各位使者根据本轮结果进行发言，你可以指认可疑之人，也可以为自己辩护。请畅所欲言。</p>
+              <p>
+                “发言顺序为：
+                <span id="settlement-start-3" class="font-semibold text-primary">待定</span>
+                到 …（按顺序）…
+                <span id="settlement-end-3" class="font-semibold text-primary">待定</span>
+                ”
+              </p>
+              <div>
+                <p class="text-xs text-gray-500 mb-1">发言顺序（从随机使者开始循环）：</p>
+                <div id="settlement-order-3" class="flex flex-wrap gap-2"></div>
+              </div>
+            </div>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- 小房间结果 -->
+            <div class="text-center p-4 border rounded-lg">
+              <h4 id="small-result-title-3" class="font-semibold mb-2">小房间</h4>
+              <div id="small-result-3" class="text-lg mb-3"></div>
+              <p class="text-gray-600 mb-2">
+                被监管者: <span id="small-guard-3"></span>
+              </p>
+
+              <!-- 小房间成员列表 -->
+              <div class="mt-4">
+                <p class="text-sm font-medium text-gray-700 mb-1">房间成员:</p>
+                <div
+                  id="small-room-members-3"
+                  class="flex flex-wrap justify-center gap-2 text-sm"
+                ></div>
+              </div>
+            </div>
+
+            <!-- 大房间结果 -->
+            <div class="text-center p-4 border rounded-lg">
+              <h4 id="large-result-title-3" class="font-semibold mb-2">大房间</h4>
+              <div id="large-result-3" class="text-lg mb-3"></div>
+              <p class="text-gray-600 mb-2">
+                被监管者: <span id="large-guard-3"></span>
+              </p>
+
+              <!-- 大房间成员列表 -->
+              <div class="mt-4">
+                <p class="text-sm font-medium text-gray-700 mb-1">房间成员:</p>
+                <div
+                  id="large-room-members-3"
+                  class="flex flex-wrap justify-center gap-2 text-sm"
+                ></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 底部按钮（添加返回按钮） -->
+          <div class="flex justify-between mt-6">
+            <button
+              id="back-to-3-config"
+              class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-6 rounded-full shadow-md scale-hover"
+            >
+              返回修改
+            </button>
+            <button
+              id="to-module-4"
+              class="bg-primary hover:bg-primary/90 text-white font-bold py-2 px-6 rounded-full shadow-md scale-hover"
+            >
+              进入第四轮审查
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- 模块4：第四轮审查 -->
+      <section id="module-4" class="hidden transition-all duration-500">
+        <div class="bg-white rounded-xl shadow-card p-6 mb-8">
+          <h2 class="text-2xl font-bold mb-6 text-primary flex items-center">
+            <i class="fa fa-building mr-2"></i>第四轮审查
+          </h2>
+
+          <div class="mb-8">
+            <div class="rounded-2xl bg-gradient-to-br from-white via-secondary/20 to-white border border-primary/20 shadow-inner p-5 space-y-6 text-sm text-gray-700">
+              <div class="flex items-start gap-4">
+                <div class="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold">①</div>
+                <div class="flex-1 space-y-2">
+                  <div class="flex items-center justify-between">
+                    <h4 class="font-semibold text-primary text-base">【选队长阶段】</h4>
+                    <button
+                      id="refresh-captain-4"
+                      class="text-xs text-primary border border-primary/30 rounded-full px-3 py-0.5 hover:bg-primary/5 transition"
+                    >
+                      重新推举队长
+                    </button>
+                  </div>
+                  <p>本轮即将开始，现随机推举一位使者担任胡人队长。</p>
+                  <p>
+                    <span class="font-semibold text-primary" id="captain-name-4">待定</span>，请举手示意。若有超过半数使者同意他担任队长，则他在分配阶段作为队长，决定被监管者人选。现在同意的人请举手。
+                  </p>
+                  <p class="text-xs text-gray-500 italic">表决通过，请队长就职。 / 表决未通过，我们将重新推举一位队长。（最多三次）</p>
+                </div>
+              </div>
+
+              <div class="border-t border-dashed border-primary/10"></div>
+
+              <div class="flex items-start gap-4">
+                <div class="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold">②</div>
+                <div class="flex-1 space-y-3">
+                  <div>
+                    <h4 class="font-semibold text-primary text-base mb-1">【讨论阶段】（5分钟）</h4>
+                    <p>现在进入讨论阶段。请所有使者自由发言，商议本轮的房间分配与被监管者人选。</p>
+                    <p class="text-xs text-gray-600">“天使可沐恩赐福，金刚可立地成界，缄默可窥秘封印，巫医可断吉凶，术士可移形换位，牧歌可闻风报数，虫王可驱虫蚀果，憨郎可置身局外——诸使者请各献良策。”</p>
+                  </div>
+                  <div class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between bg-white/80 border border-primary/10 rounded-lg p-3">
+                    <div class="flex items-center gap-2 text-xs uppercase tracking-wide text-gray-500">
+                      <i class="fa fa-clock-o text-primary"></i>
+                      <span>倒计时</span>
+                      <span id="discussion-timer-4" class="font-mono text-lg text-primary">05:00</span>
+                    </div>
+                    <div class="flex gap-2">
+                      <button
+                        id="start-timer-4"
+                        class="px-3 py-1 rounded-full bg-primary text-white text-xs font-semibold hover:bg-primary/90 transition"
+                      >
+                        开始
+                      </button>
+                      <button
+                        id="reset-timer-4"
+                        class="px-3 py-1 rounded-full bg-gray-200 text-gray-800 text-xs font-semibold hover:bg-gray-300 transition"
+                      >
+                        重置
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="border-t border-dashed border-primary/10"></div>
+
+              <div class="flex items-start gap-4">
+                <div class="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold">③</div>
+                <div class="flex-1 space-y-3">
+                  <h4 class="font-semibold text-primary text-base">【分配阶段】</h4>
+                  <p>
+                    讨论时间到。请从
+                    <span class="font-semibold text-primary" id="selection-start-4">待定</span>
+                    开始，依次选择自己要进入的房间，队长
+                    <span class="font-semibold text-primary" id="captain-name-inline-4">待定</span>
+                    为每个房间指定一名被监管者。
+                  </p>
+                  <div>
+                    <p class="text-xs text-gray-500 mb-1">选择顺序（从随机使者开始循环）：</p>
+                    <div id="selection-order-4" class="flex flex-wrap gap-2"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="mb-6">
+            <h3 class="text-lg font-semibold mb-2">前三轮审查结果</h3>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <!-- 第一轮结果 -->
+              <div class="bg-white border-2 border-gray-300 rounded-lg p-4 shadow-sm">
+                <h4 class="font-semibold text-primary mb-3">第一轮</h4>
+                <div class="grid grid-cols-2 gap-2">
+                  <!-- 小房间 -->
+                  <div class="bg-gray-50 rounded-lg p-2">
+                    <div class="flex items-center justify-between mb-1">
+                      <span class="text-xs font-medium text-gray-600">小</span>
+                      <div id="prev-round1-small-result-mod4" class="text-xs font-bold"></div>
+                    </div>
+                    <div
+                      id="prev-round1-small-members-mod4"
+                      class="flex flex-wrap gap-1 mt-1"
+                    ></div>
+                  </div>
+                  <!-- 大房间 -->
+                  <div class="bg-gray-50 rounded-lg p-2">
+                    <div class="flex items-center justify-between mb-1">
+                      <span class="text-xs font-medium text-gray-600">大</span>
+                      <div id="prev-round1-large-result-mod4" class="text-xs font-bold"></div>
+                    </div>
+                    <div
+                      id="prev-round1-large-members-mod4"
+                      class="flex flex-wrap gap-1 mt-1"
+                    ></div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 第二轮结果 -->
+              <div class="bg-white border-2 border-gray-300 rounded-lg p-4 shadow-sm">
+                <h4 class="font-semibold text-primary mb-3">第二轮</h4>
+                <div class="grid grid-cols-2 gap-2">
+                  <!-- 小房间 -->
+                  <div class="bg-gray-50 rounded-lg p-2">
+                    <div class="flex items-center justify-between mb-1">
+                      <span class="text-xs font-medium text-gray-600">小</span>
+                      <div id="prev1-small-result" class="text-xs font-bold"></div>
+                    </div>
+                    <div
+                      id="prev1-small-members"
+                      class="flex flex-wrap gap-1 mt-1"
+                    ></div>
+                  </div>
+                  <!-- 大房间 -->
+                  <div class="bg-gray-50 rounded-lg p-2">
+                    <div class="flex items-center justify-between mb-1">
+                      <span class="text-xs font-medium text-gray-600">大</span>
+                      <div id="prev1-large-result" class="text-xs font-bold"></div>
+                    </div>
+                    <div
+                      id="prev1-large-members"
+                      class="flex flex-wrap gap-1 mt-1"
+                    ></div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 第三轮结果 -->
+              <div class="bg-white border-2 border-gray-300 rounded-lg p-4 shadow-sm">
+                <h4 class="font-semibold text-primary mb-3">第三轮</h4>
+                <div class="grid grid-cols-2 gap-2">
+                  <!-- 小房间 -->
+                  <div class="bg-gray-50 rounded-lg p-2">
+                    <div class="flex items-center justify-between mb-1">
+                      <span class="text-xs font-medium text-gray-600">小</span>
+                      <div id="prev2-small-result" class="text-xs font-bold"></div>
+                    </div>
+                    <div
+                      id="prev2-small-members"
+                      class="flex flex-wrap gap-1 mt-1"
+                    ></div>
+                  </div>
+                  <!-- 大房间 -->
+                  <div class="bg-gray-50 rounded-lg p-2">
+                    <div class="flex items-center justify-between mb-1">
+                      <span class="text-xs font-medium text-gray-600">大</span>
+                      <div id="prev2-large-result" class="text-xs font-bold"></div>
+                    </div>
+                    <div
+                      id="prev2-large-members"
+                      class="flex flex-wrap gap-1 mt-1"
+                    ></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="mb-6">
+            <h3 class="text-lg font-semibold mb-2">使者列表</h3>
+            <div
+              id="players-module-4"
+              class="flex flex-wrap gap-2 p-3 bg-secondary rounded-lg min-h-[80px]"
+            >
+              <!-- 使者将通过JS动态生成 -->
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div
+              id="room-1-4"
+              class="room border-2 border-gray-300 rounded-lg p-4 hover:border-primary transition-all-300"
+            >
+              <h3 class="font-semibold mb-2">房间 1</h3>
+              <div
+                class="room-players min-h-[100px] p-2 bg-gray-50 rounded"
+              ></div>
+              <div id="room1-guard-area-4" class="mt-3 hidden">
+                <label class="block text-sm font-medium mb-1"
+                  >选择被监管者：</label
+                >
+                <div class="room-guards flex flex-wrap gap-2"></div>
+              </div>
+            </div>
+
+            <div
+              id="room-2-4"
+              class="room border-2 border-gray-300 rounded-lg p-4 hover:border-primary transition-all-300"
+            >
+              <h3 class="font-semibold mb-2">房间 2</h3>
+              <div
+                class="room-players min-h-[100px] p-2 bg-gray-50 rounded"
+              ></div>
+              <div id="room2-guard-area-4" class="mt-3 hidden">
+                <label class="block text-sm font-medium mb-1"
+                  >选择被监管者：</label
+                >
+                <div class="room-guards flex flex-wrap gap-2"></div>
+              </div>
+            </div>
+
+            <div
+              id="room-3-4"
+              class="room border-2 border-gray-300 rounded-lg p-4 hover:border-primary transition-all-300"
+            >
+              <h3 class="font-semibold mb-2">房间 3</h3>
+              <div
+                class="room-players min-h-[100px] p-2 bg-gray-50 rounded"
+              ></div>
+              <div id="room3-guard-area-4" class="mt-3 hidden">
+                <label class="block text-sm font-medium mb-1"
+                  >选择被监管者：</label
+                >
+                <div class="room-guards flex flex-wrap gap-2"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="mb-4 text-center">
+            <button
+              id="random-module-4"
+              class="bg-dark hover:bg-dark/90 text-white font-bold py-2 px-6 rounded-full shadow-md scale-hover"
+            >
+              随机分配房间
+            </button>
+          </div>
+
+          <div class="flex justify-between">
+            <button
+              id="back-to-3"
+              class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-6 rounded-full shadow-md scale-hover"
+            >
+              返回
+            </button>
+            <button
+              id="confirm-4"
+              class="bg-primary hover:bg-primary/90 text-white font-bold py-2 px-6 rounded-full shadow-md scale-hover"
+              disabled
+            >
+              确认部署
+            </button>
+          </div>
+        </div>
+
+        <div
+          id="result-4"
+          class="hidden bg-white rounded-xl shadow-card p-6 mb-8"
+        >
+          <h3 class="text-xl font-bold mb-4 text-center">第四轮审查结果</h3>
+
+          <div class="mb-6">
+            <div class="rounded-2xl bg-white/90 border border-primary/20 shadow-inner p-4 space-y-3 text-sm text-gray-700">
+              <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                <h4 class="font-semibold text-primary text-base"> ⑤【结算阶段】</h4>
+                <div class="flex flex-col sm:flex-row sm:items-center gap-2">
+                  <div class="flex items-center gap-2 text-xs uppercase tracking-wide text-gray-500">
+                    <i class="fa fa-clock-o text-primary"></i>
+                    <span>发言计时</span>
+                    <span id="settlement-timer-4" class="font-mono text-lg text-primary">01:00</span>
+                  </div>
+                  <div class="flex gap-2">
+                    <button
+                      id="start-settlement-timer-4"
+                      class="px-3 py-1 rounded-full bg-primary text-white text-xs font-semibold hover:bg-primary/90 transition"
+                    >
+                      开始
+                    </button>
+                    <button
+                      id="reset-settlement-timer-4"
+                      class="px-3 py-1 rounded-full bg-gray-200 text-gray-800 text-xs font-semibold hover:bg-gray-300 transition"
+                    >
+                      重置
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <p>现在揭晓本轮的荔枝状态。请各位使者根据本轮结果进行发言，你可以指认可疑之人，也可以为自己辩护。请畅所欲言。</p>
+              <p>
+                “发言顺序为：
+                <span id="settlement-start-4" class="font-semibold text-primary">待定</span>
+                到 …（按顺序）…
+                <span id="settlement-end-4" class="font-semibold text-primary">待定</span>
+                ”
+              </p>
+              <div>
+                <p class="text-xs text-gray-500 mb-1">发言顺序（从随机使者开始循环）：</p>
+                <div id="settlement-order-4" class="flex flex-wrap gap-2"></div>
+              </div>
+            </div>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <!-- 房间1结果 -->
+            <div class="text-center p-4 border rounded-lg">
+              <h4 class="font-semibold mb-2">房间 1</h4>
+              <div id="result-1-4" class="text-lg"></div>
+              <p class="text-gray-600 mt-2">
+                被监管者: <span id="guard-1-4"></span>
+              </p>
+
+              <!-- 房间1成员列表 -->
+              <div class="mt-4">
+                <p class="text-sm font-medium text-gray-700 mb-1">房间成员:</p>
+                <div
+                  id="room1-members-4"
+                  class="flex flex-wrap justify-center gap-2 text-sm"
+                ></div>
+              </div>
+            </div>
+
+            <!-- 房间2结果 -->
+            <div class="text-center p-4 border rounded-lg">
+              <h4 class="font-semibold mb-2">房间 2</h4>
+              <div id="result-2-4" class="text-lg"></div>
+              <p class="text-gray-600 mt-2">
+                被监管者: <span id="guard-2-4"></span>
+              </p>
+
+              <!-- 房间2成员列表 -->
+              <div class="mt-4">
+                <p class="text-sm font-medium text-gray-700 mb-1">房间成员:</p>
+                <div
+                  id="room2-members-4"
+                  class="flex flex-wrap justify-center gap-2 text-sm"
+                ></div>
+              </div>
+            </div>
+
+            <!-- 房间3结果 -->
+            <div class="text-center p-4 border rounded-lg">
+              <h4 class="font-semibold mb-2">房间 3</h4>
+              <div id="result-3-4" class="text-lg"></div>
+              <p class="text-gray-600 mt-2">
+                被监管者: <span id="guard-3-4"></span>
+              </p>
+
+              <!-- 房间3成员列表 -->
+              <div class="mt-4">
+                <p class="text-sm font-medium text-gray-700 mb-1">房间成员:</p>
+                <div
+                  id="room3-members-4"
+                  class="flex flex-wrap justify-center gap-2 text-sm"
+                ></div>
+              </div>
+            </div>
+          </div>
+          <!-- 替换原有的result-4底部按钮区域 -->
+          <div class="flex justify-between mt-6">
+            <button
+              id="back-to-4-config"
+              class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-6 rounded-full shadow-md scale-hover"
+            >
+              返回修改
+            </button>
+            <button
+              id="to-module-5"
+              class="bg-primary hover:bg-primary/90 text-white font-bold py-2 px-6 rounded-full shadow-md scale-hover"
+            >
+              进入最终投票
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- 模块5：最终投票模块（完整替换投票区域） -->
+      <section id="module-5" class="hidden transition-all duration-500">
+        <!-- 讨论阶段 -->
+        <div id="module-5-discussion" class="bg-white rounded-xl shadow-card p-6 mb-8">
+          <h2 class="text-2xl font-bold mb-6 text-primary flex items-center">
+            <i class="fa fa-comments mr-2"></i>投票前讨论阶段
+          </h2>
+
+          <!-- 倒计时区域 -->
+          <div class="mb-6">
+            <div class="rounded-2xl bg-white/90 border border-primary/20 shadow-inner p-4 space-y-3 text-sm text-gray-700">
+              <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                <h4 class="font-semibold text-primary text-base">【讨论阶段】（5分钟）</h4>
+                <div class="flex flex-col sm:flex-row sm:items-center gap-2">
+                  <div class="flex items-center gap-2 text-xs uppercase tracking-wide text-gray-500">
+                    <i class="fa fa-clock-o text-primary"></i>
+                    <span>讨论计时</span>
+                    <span id="discussion-timer-5" class="font-mono text-lg text-primary">05:00</span>
+                  </div>
+                  <div class="flex gap-2">
+                    <button
+                      id="start-discussion-timer-5"
+                      class="px-3 py-1 rounded-full bg-primary text-white text-xs font-semibold hover:bg-primary/90 transition"
+                    >
+                      开始
+                    </button>
+                    <button
+                      id="reset-discussion-timer-5"
+                      class="px-3 py-1 rounded-full bg-gray-200 text-gray-800 text-xs font-semibold hover:bg-gray-300 transition"
+                    >
+                      重置
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <p>请各位使者根据四轮审查结果进行最后的讨论，稍后投票环节将不可再讨论。你可以指认最可疑的三人，也可以为自己辩护。讨论时间为5分钟。</p>
+            </div>
+          </div>
+
+          <!-- 四轮审查结果汇总 -->
+          <div class="mb-6">
+            <h3 class="text-lg font-semibold mb-2">四轮审查结果汇总</h3>
+            <div
+              id="vote-results-summary"
+              class="space-y-4"
+            >
+              <!-- 结果将通过JS动态生成 -->
+            </div>
+          </div>
+
+          <!-- 进入投票按钮 -->
+          <div class="flex justify-between items-center">
+            <button
+              id="back-to-4-from-discussion"
+              class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-6 rounded-full shadow-md scale-hover"
+            >
+              返回第四轮结果
+            </button>
+            <button
+              id="start-voting-5"
+              class="bg-primary hover:bg-primary/90 text-white font-bold py-3 px-8 rounded-full shadow-md scale-hover"
+              disabled
+            >
+              <i class="fa fa-ballot-box mr-2"></i>开始投票
+            </button>
+          </div>
+        </div>
+
+        <!-- 投票区域 -->
+        <div id="module-5-voting" class="hidden bg-white rounded-xl shadow-card p-6 mb-8">
+          <h2 class="text-2xl font-bold mb-6 text-primary flex items-center">
+            <i class="fa fa-ballot-box mr-2"></i>最终投票
+          </h2>
+
+          <!-- 新投票区域 -->
+          <div class="mb-6">
+            <div class="flex justify-between items-center mb-3">
+              <h3 class="text-lg font-semibold">最终投票</h3>
+              <div class="bg-light px-3 py-1 rounded-full text-sm">
+                已用票数: <span id="used-votes">0</span>/<span id="total-votes-limit">30</span>
+              </div>
+            </div>
+
+            <p class="text-gray-700 mb-4">
+              每位使者拥有的票数等于当前荔枝瘾阵营人数，总票数为该票数乘以总人数（不可弃票）。请使者们在纸上写下怀疑是「荔枝瘾」的若干人选（不可重复），然后由大理寺卿汇总票数：
+            </p>
+
+            <!-- 添加随机分配票数按钮 -->
+            <div class="mb-4 text-center">
+              <button
+                id="random-vote"
+                class="bg-dark hover:bg-dark/90 text-white font-bold py-2 px-6 rounded-full shadow-md scale-hover"
+              >
+                <i class="fa fa-random mr-2"></i>随机分配票数
+              </button>
+            </div>
+
+            <!-- 票数输入区域 -->
+            <div
+              id="voting-controls"
+              class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6"
+            >
+              <!-- 票数控制器将通过JS动态生成 -->
+            </div>
+
+            <div class="flex justify-between">
+              <button
+                id="back-to-4"
+                class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-6 rounded-full shadow-md scale-hover"
+              >
+                返回讨论阶段
+              </button>
+              <button
+                id="submit-vote"
+                class="bg-primary hover:bg-primary/90 text-white font-bold py-2 px-6 rounded-full shadow-md scale-hover"
+                disabled
+              >
+                提交投票
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 模块6：胜负判定模块（完整修改） -->
+      <section id="module-6" class="hidden transition-all duration-500">
+        <div class="bg-white rounded-xl shadow-card p-6 mb-8">
+          <h2 class="text-2xl font-bold mb-6 text-primary flex items-center">
+            <i class="fa fa-trophy mr-2"></i>游戏结果
+          </h2>
+
+          <!-- 新增返回按钮 -->
+          <div class="mb-6">
+            <button
+              id="back-to-5"
+              class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-6 rounded-full shadow-md scale-hover"
+            >
+              返回投票
+            </button>
+          </div>
+
+          <div class="mb-8 text-center">
+            <div
+              id="winner-banner"
+              class="text-3xl font-bold mb-4 py-4 rounded-lg"
+            >
+              <!-- 获胜方将在这里显示 -->
+            </div>
+            <p id="special-outcome" class="text-sm text-gray-600 hidden"></p>
+          </div>
+
+          <!-- 删除原来的得票前三名区域，替换为票数详情 -->
+          <div class="mb-8">
+            <h3 class="text-lg font-semibold mb-4 text-center">得票情况</h3>
+            <div id="top-vote-results" class="flex flex-col items-center gap-4">
+              <!-- 票数详情将通过JS动态生成，包含相同票数处理 -->
+            </div>
+          </div>
+
+          <!-- 真实身份区域保持不变 -->
+          <div class="mb-8">
+            <h3 class="text-lg font-semibold mb-4 text-center">真实身份</h3>
+            <div class="p-4 bg-gray-50 rounded-lg">
+              <div
+                id="player-identities"
+                class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3"
+              >
+                <!-- 使者真实身份将通过JS动态生成 -->
+              </div>
+            </div>
+          </div>
+
+          <!-- 游戏复盘区域 -->
+          <div class="mb-8">
+            <h3 class="text-lg font-semibold mb-4 text-center">游戏复盘</h3>
+            <div id="game-replay" class="space-y-4">
+              <!-- 游戏复盘内容将通过JS动态生成 -->
+            </div>
+          </div>
+
+          <div class="text-center">
+            <button
+              id="restart-game"
+              class="bg-primary hover:bg-primary/90 text-white font-bold py-3 px-8 rounded-full shadow-md scale-hover"
+            >
+              重新开始游戏
+            </button>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- 页脚 -->
+    <footer class="bg-accent text-white py-4">
+      <div class="container mx-auto px-4 text-center">
+        <p class="font-tang">荔枝谜案 - 大唐推理游戏 - DPF &copy; 2025</p>
+      </div>
+    </footer>
+
+    <!-- 引入拆分后的JS文件 -->
+    <!-- 核心文件 -->
+    <script src="js/core/gameData.js"></script>
+    <script src="js/core/utils.js"></script>
+
+    <!-- 能力系统 -->
+    <script src="js/abilities/baseAbility.js"></script>
+    <script src="js/abilities/goldenMonk.js"></script>
+    <script src="js/abilities/muEnAngel.js"></script>
+    <script src="js/abilities/silentWhisper.js"></script>
+    <script src="js/abilities/medicineShaman.js"></script>
+    <script src="js/abilities/disguiseMaster.js"></script>
+    <script src="js/abilities/songMessenger.js"></script>
+    <script src="js/abilities/boneWhistleKing.js"></script>
+    <script src="js/abilities/hanBaLang.js"></script>
+
+    <!-- 用户界面 -->
+    <script src="js/ui/dragDrop.js"></script>
+    <script src="js/ui/roomManagement.js"></script>
+
+    <!-- 游戏模块 -->
+    <script src="js/modules/module0.js"></script>
+    <script src="js/modules/module1.js"></script>
+    <script src="js/modules/module2.js"></script>
+    <script src="js/modules/module3.js"></script>
+    <script src="js/modules/module4.js"></script>
+    <script src="js/modules/module5.js"></script>
+    <script src="js/modules/module6.js"></script>
+
+    <!-- 主程序入口 -->
+    <script src="js/main.js"></script>
+  </body>
+</html>
