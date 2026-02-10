@@ -24,6 +24,11 @@
 
 // 初始化模块3
 function initModule3() {
+  // 清除房间选中状态
+  if (typeof clearRoomSelection === 'function') {
+    clearRoomSelection();
+  }
+
   // 如果已存在配置（跨模块返回时），不重置数据，直接按现有状态渲染
   const hasExisting =
     gameData.module3 &&
